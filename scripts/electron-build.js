@@ -10,6 +10,7 @@ const builderCli = path.join(root, "node_modules", "electron-builder", "cli.js")
 const platformAliases = new Map([
   ["win", "win"],
   ["windows", "win"],
+  ["win32", "win"],
   ["linux", "linux"],
   ["mac", "mac"],
   ["macos", "mac"],
@@ -47,8 +48,16 @@ function normalizeArch(value) {
   if (!value) return null;
   const normalized = archAliases.get(String(value).toLowerCase());
   if (!normalized) {
-    throw new Error(`Unsupported architecture: ${value}. Use x64, arm64, universal, or all.`);
+    throw new Error(
+      `Unsupported architecture: ${value}. Use x64, arm64, universal, or all.`,
+    );
   }
+  return normalized;
+}
+
+function hostPlatform() {
+  const normalized = normalizePlatform(os.platform());
+  if (!normalized) throw new Error(`Unsupported build host: ${os.platform()}.`);
   return normalized;
 }
 
@@ -83,30 +92,116 @@ function matrix() {
     console.log(`${platform.padEnd(8)} ${arch.padEnd(9)} ${command}`);
   }
   console.log(
-    "\nUse --web for the Windows NSIS web installer and --dir for an unpacked directory build.",
+    "\nLinux AppImage builds require Linux. From Windows/macOS, append --docker to a Linux command.",
   );
   console.log(
-    "Cross-platform release artifacts should be produced on the native CI runners in " +
-      ".github/workflows/desktop-multiarch.yml.",
+    "For release artifacts, prefer the native CI runners in .github/workflows/desktop-multiarch.yml.",
   );
 }
 
 function help() {
-  console.log(
-    [
-      "Usage: npm run desktop:build -- [options]",
-      "",
-      "Options:",
-      "  --platform win|linux|mac",
-      "  --arch x64|arm64|universal|all",
-      "  --web       Build the Windows NSIS web installer (requires UPM_WEB_PACKAGE_URL)",
-      "  --dir       Build an unpacked directory instead of installers/packages",
-      "  --matrix    Print the supported release matrix",
-      "  --help      Show this help",
-      "",
-      "With no options, electron-builder targets the current host and architecture using the slim profile.",
-    ].join("\n"),
-  );
+  console.log([
+    "Usage: npm run desktop:build -- [options]",
+    "",
+    "Options:",
+    "  --platform win|linux|mac",
+    "  --arch x64|arm64|universal|all",
+    "  --docker    Build a Linux target in the official electron-builder Docker image",
+    "  --web       Build the Windows NSIS web installer (requires UPM_WEB_PACKAGE_URL)",
+    "  --dir       Build an unpacked directory instead of installers/packages",
+    "  --matrix    Print the supported release matrix",
+    "  --help      Show this help",
+    "",
+    "With no options, electron-builder targets the current host and architecture using the slim profile.",
+    "AppImage must be built on Linux or through --docker; macOS DMG/ZIP builds require macOS.",
+  ].join("\n"));
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function dockerAvailable() {
+  const result = spawnSync("docker", ["version", "--format", "{{.Server.Version}}"], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return result.status === 0;
+}
+
+function runLinuxDockerBuild({ arch, directory }) {
+  if (!dockerAvailable()) {
+    throw new Error(
+      "Docker is not available. Start Docker Desktop (or install Docker), then retry with --docker; otherwise use the Linux GitHub Actions runner.",
+    );
+  }
+
+  const image = String(process.env.UPM_ELECTRON_DOCKER_IMAGE || "electronuserland/builder:24").trim();
+  const innerArgs = ["node", "scripts/electron-build.js", "--platform", "linux"];
+  if (arch) innerArgs.push("--arch", arch);
+  if (directory) innerArgs.push("--dir");
+
+  const command = `npm ci && ${innerArgs.map(shellQuote).join(" ")}`;
+  const dockerArgs = [
+    "run",
+    "--rm",
+    "-e",
+    "CI=1",
+    "-e",
+    "CSC_IDENTITY_AUTO_DISCOVERY=false",
+    "-v",
+    `${root}:/project`,
+    "-v",
+    "upm-electron-node-modules:/project/node_modules",
+    "-v",
+    "upm-electron-npm-cache:/root/.npm",
+    "-v",
+    "upm-electron-cache:/root/.cache/electron",
+    "-v",
+    "upm-electron-builder-cache:/root/.cache/electron-builder",
+    "-w",
+    "/project",
+    image,
+    "bash",
+    "-lc",
+    command,
+  ];
+
+  console.log(`Building Linux artifacts in Docker (${image})...`);
+  const result = spawnSync("docker", dockerArgs, {
+    cwd: root,
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (result.error) throw result.error;
+  process.exitCode = result.status || 0;
+}
+
+function validateHostCompatibility({ platform, useDocker }) {
+  const host = hostPlatform();
+
+  if (useDocker) {
+    if (platform !== "linux") {
+      throw new Error("--docker is only supported for Linux Electron builds.");
+    }
+    return;
+  }
+
+  if (platform === "linux" && host !== "linux") {
+    throw new Error(
+      `Linux AppImage cannot be built directly on ${os.platform()}. ` +
+        "Build on Linux, use GitHub Actions, or retry with --docker (for example: " +
+        "npm run desktop:build -- --platform linux --arch x64 --docker).",
+    );
+  }
+
+  if (platform === "mac" && host !== "mac") {
+    throw new Error(
+      `macOS DMG/ZIP artifacts cannot be produced reliably on ${os.platform()}. ` +
+        "Use a macOS host or .github/workflows/desktop-multiarch.yml.",
+    );
+  }
 }
 
 function main() {
@@ -119,21 +214,30 @@ function main() {
   const arch = normalizeArch(valueFor("arch"));
   const web = process.argv.includes("--web");
   const directory = process.argv.includes("--dir");
+  const useDocker = process.argv.includes("--docker");
+  const effectivePlatform = web ? "win" : platform || (useDocker ? "linux" : hostPlatform());
 
-  if (web && platform && platform !== "win") {
+  if (web && effectivePlatform !== "win") {
     throw new Error("The NSIS web installer is Windows-only.");
   }
   if (web && directory) throw new Error("--web and --dir cannot be combined.");
-  if (arch === "universal" && platform && platform !== "mac") {
+  if (web && useDocker) throw new Error("--web and --docker cannot be combined.");
+  if (arch === "universal" && effectivePlatform !== "mac") {
     throw new Error("Universal builds are only supported for macOS.");
   }
+
+  validateHostCompatibility({ platform: effectivePlatform, useDocker });
+
+  if (useDocker) {
+    return runLinuxDockerBuild({ arch, directory });
+  }
+
   if (!fs.existsSync(builderCli)) {
     throw new Error("electron-builder is not installed. Run npm ci before building.");
   }
 
   const config = web ? "build/electron-builder-web.cjs" : "build/electron-builder-slim.cjs";
   const args = [builderCli, "--config", config];
-  const effectivePlatform = web ? "win" : platform;
   if (effectivePlatform === "win") args.push("--win", web ? "nsis-web" : "nsis");
   else if (effectivePlatform === "linux") args.push("--linux", "AppImage", "tar.xz");
   else if (effectivePlatform === "mac") args.push("--mac", "dmg", "zip");

@@ -185,6 +185,13 @@ requireAudit(
   fs.existsSync(path.join(ROOT, "scripts", "run-tests.js")),
   "Automatic test runner is missing.",
 );
+const electronBuildHelper = read("scripts/electron-build.js");
+requireAudit(
+  electronBuildHelper.includes("Linux AppImage cannot be built directly") &&
+    electronBuildHelper.includes("electronuserland/builder:24") &&
+    electronBuildHelper.includes("UPM_ELECTRON_DOCKER_IMAGE"),
+  "Electron build helper is missing Linux host/Docker cross-build safeguards.",
+);
 requireAudit(
   server.includes("maxBuckets = 5000") && server.includes("server.maxRequestsPerSocket = 1000"),
   "Main HTTP rate-limit/server resource bounds are missing.",

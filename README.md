@@ -1,393 +1,276 @@
-# Ultimate Project Manager v0.10.8 (BETA)
+# Ultimate Project Manager v0.10.9
 
-**Ultimate Project Manager (UPM)** is a local-first desktop application for managing, monitoring, backing up, and recovering multiple Node.js projects from one dashboard.
+Ultimate Project Manager (UPM) is a local desktop dashboard for managing, monitoring, backing up, and recovering multiple Node.js projects from one place.
 
-UPM brings project backups, PM2 process management, Docker readiness, service monitoring, recovery tools, project utilities, remote LAN systems, and operational history together in a single application.
+**v0.10.9 hardens cross-platform Electron packaging.** Linux AppImage builds are now blocked early on Windows/macOS instead of falling through to an opaque `mksquashfs ENOENT` failure. Linux artifacts can be built locally from Windows/macOS with the explicit `--docker` option, while the release workflow continues to use native Linux runners. macOS DMG/ZIP builds are also rejected on non-macOS hosts with a clear native-runner message.
 
-It is based on the project-management tooling used for Bacons Helper, adapted into a more general-purpose application for managing multiple Node.js projects and the services around them.
+It combines project management, backups, PM2 controls, service monitoring, recovery tools, file utilities, host telemetry, and LAN project support in a single interface.
 
-> **UPM is local-only by default.**
-> Remote dashboard and LAN Agent features must be explicitly enabled.
+**v0.10.6 improves project onboarding and prepares the public GitHub community surface.** The Projects heading now includes a first-class **Add Project** action beside Refresh, the More menu includes direct links to the upcoming Ultimate Project Manager repository and Ko-fi support page, and the Electron-only application menu now includes an About dialog with version/runtime details. Repository-ready issue forms, pull-request guidance, support/security documents, and a starter GitHub Wiki set are included under `.github/` and `docs/wiki/`.
 
----
+**v0.10.5 streamlines the application navigation while retaining the v0.10.4 interactive chart and session-secret hardening work.** Settings now sits with the primary left-side dashboard navigation and uses the same visual treatment as the section controls. Global actions are consolidated into a grouped More menu on the right, including project actions, refresh/verification tools, File Tools, desktop-only browser/data-folder actions, guidance, and account controls.
 
-## Why Ultimate Project Manager?
+**v0.10.4 overhauls dashboard history charts and hardens authentication session-secret rotation.** Host CPU/memory/per-core history and PM2 health graphs now share one interactive canvas chart engine with proportional time spacing, clearer scales and legends, hover crosshairs, exact-value tooltips, and keyboard sample navigation. Session-secret rotation now uses shell-safe generated secrets, verifies the saved value, ignores invalid stale inherited overrides when a valid `.env` value exists, and can automatically repair an invalid desktop `.env` secret before authentication startup.
 
-Running several Node.js applications often means managing more than just source code.
-
-A project may depend on:
-
-- PM2
-- Docker
-- Redis
-- MariaDB / MySQL
-- PostgreSQL
-- External or local HTTP services
-- Backup drives
-- NAS storage
-- Environment-specific files
-- Files intentionally excluded from Git
-- Other PCs on the local network
-
-UPM provides a central place to see and manage those pieces while adding multiple recovery layers if something goes wrong.
-
-Rather than relying entirely on Git, PM2, or a normal backup directory, UPM combines:
-
-- Verified backups
-- Backup mirrors
-- Persistent change history
-- Git-assisted recovery
-- Process monitoring
-- Dependency health checks
-- Operational history
-- Project utilities
-- Remote-host monitoring
-
-The goal is to make maintaining multiple projects less fragile and easier to understand.
+The **v0.10.3 standalone Electron shell** remains in place: global actions live with the main navigation, Electron uses a compact edge-to-edge application layout, and a direct **Browser Dashboard** action opens the normal web dashboard when wanted.
 
 ---
 
-# Highlights
+## Highlights
 
-## Project Management
-
+- Native Electron desktop application
 - Multi-project dashboard
-- Project discovery from folders containing `package.json`
-- Collapsible project cards
-- Remembered interface state
-- Project-specific settings
-- Project search and navigation
-- Editor shortcuts
-- GitHub repository shortcuts
-- Built-in TODO / FIX / NOTE tracker
-- Dependency viewer
-- Project diff tools
-
-## Backup & Recovery
-
-- Automatic change-based backups
-- Scheduled backups
-- Manual backups
-- Verified archive creation
-- Configurable retention
-- Primary and secondary backup destinations
-- Secondary backup catch-up
+- Automatic verified backups
+- Optional secondary backup destinations
 - AES-256-GCM encrypted backups
-- Individual-file recovery
-- Full-project recovery
+- Individual-file and full-project recovery
 - Persistent delta/change journal
 - Git-assisted recovery
-- Backup include overrides
-- Backup history
-- Archive integrity checking
-- Recovery workspaces
-
-## Process & Runtime Management
-
-- PM2 process monitoring
-- PM2 start, stop, restart, and reload controls
-- PM2 crash and restart history
-- PM2 logs
-- Docker / Docker Desktop readiness monitoring
-- Optional Docker startup gating
-- Process CPU and memory telemetry
-- GPU telemetry when supported
-- HTTP performance telemetry when available
-- Host CPU, memory, uptime, and per-core monitoring
-
-## Service Monitoring
-
-Built-in health probes are available for:
-
-- Redis
-- MariaDB / MySQL
-- PostgreSQL
-- Docker
-- HTTP / HTTPS
-- TCP services
-
-Each dependency is monitored independently so one failed service does not make unrelated services appear unavailable.
-
-## LAN Remote Agents
-
-Manage projects located on another computer without mounting their project directories as network shares.
-
-Remote Agents can provide:
-
-- Project discovery
-- PM2 status
-- Docker status
-- Service-health information
-- Remote backups
-- Backup verification
-- Backup encryption
-- Backup retention
-- Secondary mirroring
-- Storage-capacity information
-
-## File Tools
-
-UPM includes project-focused file utilities such as:
-
-- Duplicate-file detection
-- Timestamped-file cleanup
-- Timestamped-file renaming
-- File inventory
-- Comment removal
-- Multi-step processing pipelines
-- Unicode / AI-symbol Text Sanitizer
+- PM2 monitoring and controls
+- Docker readiness and startup gating
+- Redis, MariaDB/MySQL, PostgreSQL, Docker, HTTP/HTTPS, and TCP health checks
+- Interactive PM2 CPU, GPU, memory, HTTP, uptime, restart, and health-event history charts
+- Interactive host CPU, memory, per-core, uptime, and history charts with exact-value hover tooltips
+- LAN Remote Agents for projects on other PCs
+- TODO / FIX / NOTE project tracker
+- Dependency viewer
+- Project diff tools
 - Export Changes Feature Packs
+- Duplicate, timestamp, comment, inventory, and batch File Tools
+- Unicode / AI-symbol Text Sanitizer
+- Setup import/export
+- Editor and GitHub shortcuts
+- Searchable activity and diagnostics
+- Built-in Help, Tips, onboarding, and accessibility options
+- GitHub-ready issue, pull-request, support, security, and wiki documentation
 
-File Tools use separate output directories so source files can remain untouched.
+## Project & Support
 
-## Interface & Accessibility
+- Repository: <https://github.com/Bacon-Fixation/Ultimate-Project-Manager>
+- Issues: <https://github.com/Bacon-Fixation/Ultimate-Project-Manager/issues>
+- Support development: <https://ko-fi.com/baconfixation>
 
-- Electron desktop application
-- Browser dashboard option
-- Responsive desktop, tablet, and mobile layouts
-- Interactive charts
-- Exact-value chart hover information
-- Keyboard-accessible controls
-- Reduced-motion support
-- Forced-color support
-- Colorblind-friendly palettes
-- High-contrast and monochrome options
-- Status indicators that do not depend on color alone
-- Built-in Help, Tips, and onboarding
+The repository URL is included ahead of the public repository launch so releases, package metadata, desktop menus, and community templates are ready when the repository goes live.
 
 ---
 
-# Desktop Application
+# Desktop Releases
 
-UPM is primarily designed as a standalone Electron desktop application.
+The Electron version can be distributed as a normal desktop release for **Windows, Linux, and macOS**.
 
-Desktop releases are available for modern 64-bit systems:
+Current Electron 44 builds target modern 64-bit systems:
 
-| Platform | Architectures                             |
-| -------- | ----------------------------------------- |
-| Windows  | x64, ARM64                                |
-| Linux    | x64, ARM64                                |
-| macOS    | Intel x64, Apple Silicon ARM64, Universal |
+- Windows: x64 and ARM64
+- Linux: x64 and ARM64
+- macOS: Intel x64, Apple Silicon ARM64, or a combined Universal build
 
-The desktop application contains the UPM backend internally, allowing the normal browser dashboard to remain available while UPM is running.
+Release artifacts are architecture-specific by default so users only download the Electron runtime they actually need. Windows can also use a small NSIS web-installer bootstrap that downloads the matching x64 or ARM64 application package during installation. Linux releases can use AppImage for convenience or `tar.xz` for a smaller compressed download.
 
-### Desktop features
+### Build-host rules
 
-The desktop application adds:
+Electron packaging is not fully cross-compilable. In particular, AppImage requires Linux tooling. UPM now enforces the supported host before launching electron-builder so unsupported cross-builds fail with a useful message instead of a missing `mksquashfs` executable.
 
-- Compact application-focused layout
-- Native application navigation
-- Browser Dashboard shortcut
+```bash
+# Native Windows build
+npm run desktop:build -- --platform win --arch x64
+
+# Native Linux build
+npm run desktop:build -- --platform linux --arch x64
+
+# Linux build from Windows/macOS through Docker Desktop / Docker
+npm run desktop:build -- --platform linux --arch x64 --docker
+```
+
+For macOS DMG/ZIP output, build on macOS. For release-quality multi-platform output, use `.github/workflows/desktop-multiarch.yml`, which runs each target on an appropriate native runner. The Docker Linux path uses `electronuserland/builder:24` by default; set `UPM_ELECTRON_DOCKER_IMAGE` to override the image when needed.
+
+The desktop application includes the UPM web backend internally, so the normal dashboard remains available while the Electron application is running.
+
+UPM is **local-only by default**.
+
+### Desktop-specific features
+
+The Electron release adds:
+
+- Compact, edge-to-edge desktop application layout
+- Main navigation with project actions and a direct Browser Dashboard option
+- Traditional desktop menu hidden by default but still available with the normal menu key
 - System tray controls
 - Optional close-to-tray behavior
 - Launch-at-login support on Windows and macOS
 - Native folder selection
 - Desktop notifications
-- Same-process desktop authentication
+- Secure same-process desktop authentication
 - External links opened in the operating-system browser
-- Optional browser and LAN dashboard access
+- Normal browser/LAN dashboard access when explicitly enabled
 
-Installed builds keep writable runtime information in the application's per-user data directory instead of modifying installed program files.
+Installed desktop builds keep writable runtime data in the application's per-user data directory instead of modifying the installed program files.
 
 Use:
 
 **More → Desktop → Open Data Folder**
 
-to open the active application-data location.
+to open that location.
 
 ---
 
-# Getting Started
+# Projects
 
-## 1. Add a Project
+Use **Add Project** to register a project with UPM.
 
-Open **Projects** and select:
+Each project can have its own:
 
-**Add Project**
-
-A project can be configured with its own:
-
-- Project directory
-- Primary backup location
-- Secondary backup location
-- Backup retention
-- Backup schedule
+- Project folder
+- Primary backup folder
+- Optional secondary backup folder
+- Backup retention amount
 - Automatic change watcher
+- Backup schedule
 - Backup encryption
 - Persistent change journal
-- Backup exclusions
+- File and folder exclusions
 - Backup include overrides
-- PM2 configuration
+- PM2 process configuration
 - PM2 auto-start behavior
-- Docker startup gate
+- Optional Docker startup gate
 - Service-health checks
-- Tasks
-- Editor
-- Repository
+- TODO / FIX / NOTE task list
+- Editor shortcut
+- Repository shortcut
 
-UPM can also discover projects by scanning parent folders for `package.json` files.
+Projects can also be discovered from parent folders containing `package.json` files.
 
----
-
-## 2. Configure Backups
-
-UPM can monitor a project for real file-content changes and automatically create a verified backup.
-
-A normal backup can:
-
-1. Scan the project.
-2. Detect file-content changes.
-3. Create a stable snapshot.
-4. Build the archive.
-5. Verify the archive.
-6. Store it in the primary backup location.
-7. Mirror it to the secondary location when configured.
-8. Record changes in the persistent journal when enabled.
-
-Changing only a file timestamp does not normally create another backup.
-
-Manual backups can always be forced when needed.
-
----
-
-## 3. Configure Runtime Monitoring
-
-Projects that use PM2, Docker, databases, or other services can expose their runtime state directly in UPM.
-
-This allows the project card and Overview page to show both the application and the infrastructure it depends on.
+Project cards can be collapsed, and their state is remembered between visits.
 
 ---
 
 # Dashboard
 
-The main application is divided into four primary areas.
+The main dashboard is organized into four primary areas:
 
-## Projects
+### Projects
 
-The main working area for:
+Manage projects, backups, PM2 processes, health checks, tasks, recovery, dependencies, and project tools.
 
-- Project configuration
-- Backups
+### Overview
+
+View project activity, PM2 state, host CPU and memory usage, service-health summaries, warnings, errors, and system history.
+
+### Storage
+
+Monitor primary and secondary backup locations, archive usage, disk capacity, and mirror availability.
+
+### Activity
+
+Review backups, restores, PM2 events, settings changes, File Tools runs, warnings, errors, and other operational events.
+
+The dashboard is designed for desktop, tablet, and mobile layouts.
+
+---
+
+# Project Actions
+
+Common actions are available directly from each project card.
+
+Depending on the project, these can include:
+
+- Backup
+- Check Changes
+- Backup History
+- Diff
 - Recovery
-- PM2
-- Health checks
-- Tasks
+- Journal
 - Dependencies
-- File Tools
-- Project utilities
+- Tasks
+- PM2 Health
+- PM2 Logs
+- Open in Editor
+- Open Repository
+- Edit Project
 
-Common actions can be launched directly from each project card.
+Less frequently used actions are grouped under **More Actions**.
 
-Less frequently used operations are grouped under **More Actions**.
+---
 
-## Overview
+# Backups
 
-A system-wide view of:
+UPM can automatically create compressed project backups when file contents change.
 
-- Registered projects
-- Running processes
-- Project health
-- PM2 status
-- Host CPU usage
-- Host memory usage
-- Docker state
-- Service-health status
-- Backup status
-- Recent warnings
-- Recent errors
-- System history
+A normal backup can:
 
-## Storage
+1. Scan the project
+2. Detect real file-content changes
+3. Create a stable snapshot
+4. Build the archive
+5. Verify the archive
+6. Save it to the primary backup location
+7. Mirror it to a secondary location when configured
+8. Record change information in the persistent journal when enabled
 
-Monitor backup destinations and archive storage.
+Changing only a file timestamp does not normally create another backup.
 
-UPM can display:
+Manual backups can still be forced whenever needed.
 
-- Host
-- Backup path
-- Filesystem root
-- Free capacity
-- Total capacity
-- Disk usage
-- Archive count
-- Managed archive size
-- Destination availability
+### Backup features
 
-Primary and secondary backup destinations are shown separately.
-
-## Activity
-
-UPM maintains searchable operational history for events such as:
-
-- Backups
-- Backup verification
-- Restores
-- Recovery operations
-- PM2 events
-- Settings changes
-- File Tools runs
-- Warnings
-- Errors
+- Automatic change-based backups
+- Scheduled backups
+- Manual backups
+- Configurable retention
+- Primary and secondary destinations
+- Archive verification
+- Optional encryption
+- Backup history
+- Backup mirroring
+- Selected `.gitignore` overrides
+- Windows/NAS-safe metadata recovery
+- Remote backups through LAN Agents
 
 ---
 
 # Backup Verification
 
-Backups are checked before they are accepted.
+New backups are checked before being accepted.
 
 Verification can include:
 
 - Archive readability
-- Archive checksums
+- Archive checksum
 - Unsafe archive paths
 - Symlink safety
 - Snapshot contents
 - Encrypted archive decryption
 
-Backups can be reported as:
+Backups are shown as:
 
 - **Verified**
 - **Unverified**
 - **Failed**
 
-Verification helps prevent a damaged archive from silently replacing a usable recovery point.
-
 ---
 
-# Primary & Secondary Backups
+# Two Backup Locations
 
-Each project can have:
+Each project can use:
 
-**Primary Backup → Main backup destination**
+**Primary Backup → Main backup folder**
 
 and optionally:
 
-**Secondary Backup → Another drive, USB device, NAS path, or folder**
+**Secondary Backup → Second drive, USB device, NAS path, or other folder**
 
-The secondary destination operates independently from the primary backup.
+The secondary location is best-effort. If it is temporarily unavailable, the primary backup can still succeed.
 
-If the secondary location is unavailable, the primary backup can still succeed.
-
-When the destination returns, UPM can catch the secondary location back up using verified primary backups.
+When the secondary destination becomes available again, UPM can catch it back up from verified primary backups.
 
 ---
 
 # Encrypted Backups
 
-UPM supports optional **AES-256-GCM** backup encryption.
+Backups can optionally use **AES-256-GCM** encryption.
 
-Encryption can protect archives containing:
+Encryption is useful when archives may contain private source code, configuration files, credentials, tokens, or other sensitive data.
 
-- Private source code
-- Configuration
-- Tokens
-- Credentials
-- Internal data
-- Other sensitive project files
-
-Keep encryption keys somewhere safe.
-
-Existing encrypted archives require the key that was used when the archive was created.
+Keep the encryption key somewhere safe. Existing encrypted backups still require the key that was used when they were created.
 
 ---
 
@@ -395,11 +278,11 @@ Existing encrypted archives require the key that was used when the archive was c
 
 UPM normally respects `.gitignore` and project backup exclusions.
 
-Individual ignored files or directories can be explicitly included through:
+When a specific ignored file or folder must still be backed up, add it under:
 
 **Project Settings → Backups → Backup Include Overrides**
 
-Example:
+Examples include:
 
 ```text
 .env.example
@@ -408,42 +291,42 @@ config/required/
 generated/*.json
 ```
 
-Unsafe inclusions such as `.git/` and backup destinations inside the project directory remain blocked.
+UPM still prevents unsafe inclusions such as `.git/` and backup destinations located inside the project tree.
 
-Sensitive files such as `.env` should only be included when necessary and are best combined with encrypted backups.
+Sensitive files such as `.env` should only be explicitly included when necessary, preferably with backup encryption enabled.
 
 ---
 
 # Recovery
 
-UPM uses multiple recovery sources.
+Recovery is layered so one missing or damaged source does not automatically mean a file is lost.
 
-When available, recovery can search:
+UPM can search:
 
 1. Verified backups
-2. Persistent change-journal history
-3. Git history
+2. Persistent delta/change journal history
+3. Git history when available
 
-Files can first be reconstructed inside a recovery workspace instead of being written directly over the live project.
+Individual files can be reconstructed into a safe recovery workspace before being copied back into the live project.
 
-Recovery can help with files that were:
+This is especially useful for files that were:
 
-- Accidentally deleted
+- Deleted accidentally
 - Ignored by Git
 - Never committed
 - Removed by backup retention
-- Lost during an incomplete repository operation
-- Modified between full backups
+- Lost during incomplete repository operations
+- Changed between full backups
 
 ---
 
 # Persistent Change Journal
 
-The optional persistent journal records compressed project changes between normal snapshots.
+The persistent delta journal stores compressed changes between normal snapshots.
 
-This provides another recovery source even after an older full backup has been removed by normal retention.
+This gives UPM another recovery source even after an older full archive has been removed by normal backup retention.
 
-The journal can be enabled independently for each project.
+The journal can be enabled or disabled per project.
 
 ---
 
@@ -451,23 +334,21 @@ The journal can be enabled independently for each project.
 
 UPM can compare the live project against its latest available backup.
 
-The comparison can identify:
+This makes it easier to identify:
 
 - Added files
 - Modified files
 - Deleted files
-- Work not yet included in a backup
-- Unexpected changes
-
-This can be useful before performing a restore, deployment, or large project change.
+- Work that has not yet reached a backup
+- Unexpected changes before restore or deployment
 
 ---
 
-# Export Changes Feature Packs
+# Export Changes Feature Pack
 
-Feature Packs allow a set of changes to be moved between project copies without transferring the complete project.
+Feature Packs make it easier to move manual or offline changes between copies of a project.
 
-A Feature Pack can contain:
+A Feature Pack can include:
 
 - Added files
 - Modified files
@@ -478,41 +359,38 @@ A Feature Pack can contain:
 
 Sensitive files are filtered from normal exports.
 
-Feature Packs are particularly useful for moving offline changes between computers.
+This is useful when changes were made offline or on another PC and you only want to transfer the changed files instead of the entire project.
 
 ---
 
 # PM2 Management
 
-When PM2 is installed, UPM can:
+When PM2 is available, UPM can:
 
 - Match projects to PM2 processes
-- Show process state
-- Start processes
-- Stop processes
+- Show online/offline status
+- Start stopped projects
 - Restart processes
 - Reload processes
+- Stop processes
 - Auto-start configured projects
-- Track crashes
-- Track unexpected restarts
+- Track crashes and unexpected restarts
 - Detect PM2 daemon restarts
-- Maintain health history
-- Display PM2 logs
+- Keep PM2 health history
+- Read PM2 logs
 
-PM2 is optional.
-
-Backup, recovery, tasks, File Tools, and most other UPM features work without it.
+PM2 is optional. Backup, recovery, File Tools, tasks, and most other UPM features continue to work without it.
 
 ---
 
 # Process Telemetry
 
-UPM can expand normal PM2 information with additional telemetry when supported by the host.
+UPM expands the normal PM2 view with additional per-process information when the host supports it.
 
-Available information can include:
+Available telemetry can include:
 
-- CPU usage
-- Original PM2 CPU value
+- Normalized CPU usage
+- Original PM2 raw CPU value
 - RAM usage
 - V8 heap usage
 - GPU utilization
@@ -525,57 +403,28 @@ Available information can include:
 
 GPU telemetry is best-effort and depends on available NVIDIA or Windows GPU-engine information.
 
-HTTP information is available when the monitored application exposes compatible PM2 / AXM metrics.
-
----
-
-# Interactive Charts
-
-UPM includes interactive charts for both project and host metrics.
-
-Charts can display:
-
-- CPU usage
-- Memory usage
-- Per-core CPU activity
-- Process performance
-- HTTP activity
-- Uptime
-- Restart events
-- Health events
-- Historical system information
-
-Hovering a chart can expose the exact value represented by a point instead of requiring the value to be estimated visually.
-
-Historical system views can include:
-
-- Last hour
-- Last 6 hours
-- Last 24 hours
-- Last 3 days
-- Last 7 days
+HTTP telemetry appears when the monitored application exposes PM2/AXM HTTP metrics.
 
 ---
 
 # PM2 Logs
 
-PM2 output and error logs can be viewed directly inside UPM.
+UPM can display PM2 output and error logs directly inside the dashboard.
 
-Available log features include:
+Log features include:
 
-- Output view
-- Error view
-- Combined view
-- ANSI terminal-color parsing
+- Split output/error views
+- Combined log view
+- ANSI terminal color parsing
 - Output/error differentiation
-- Severity highlighting
-- Access while project cards are collapsed
+- Common severity highlighting
+- Quick access while project cards are collapsed
 
 ---
 
 # Docker Runtime & Startup Gate
 
-UPM tracks Docker runtime readiness separately from ordinary project-health probes.
+UPM monitors Docker runtime readiness independently from project health checks.
 
 On Windows it can distinguish between:
 
@@ -583,38 +432,40 @@ On Windows it can distinguish between:
 - Docker Desktop starting
 - Docker daemon ready
 
-Projects can enable:
+For local projects, enable:
 
 **Runtime → Wait for Docker / Docker Desktop daemon readiness**
 
-to prevent supported PM2 actions from executing before Docker is actually ready.
+to prevent PM2 operations from running before Docker is actually ready.
 
-The startup gate can apply to:
+The gate can apply to:
 
 - PM2 auto-start
-- Start in PM2
+- Start In PM2
 - Process Start
 - Process Restart
 - Process Reload
 
-Docker is considered ready only after the daemon responds successfully.
+UPM considers Docker ready only after the Docker daemon responds successfully.
+
+LAN Remote Agents also report Docker status for their host.
 
 ---
 
 # Service Health Monitoring
 
-Each project can monitor the supporting services it requires.
+Each project can monitor the supporting services it depends on.
 
-Built-in probes support:
+Built-in probes are available for:
 
-- Redis
-- MariaDB / MySQL
-- PostgreSQL
-- Docker
-- HTTP / HTTPS
-- TCP
+- **Redis**
+- **MariaDB / MySQL**
+- **PostgreSQL**
+- **Docker**
+- **HTTP / HTTPS**
+- **TCP**
 
-Services are reported independently as:
+Each service is reported independently as:
 
 - **Healthy**
 - **Degraded**
@@ -624,74 +475,77 @@ UPM can also show:
 
 - Probe latency
 - Last available detail
-- Check interval
-- Timeout
+- Configurable check interval
+- Configurable timeout
 - Manual refresh
 
-Lightweight built-in database reachability checks do not require database passwords to be stored.
+A failed dependency does not automatically mark unrelated services as failed.
+
+Database passwords are not required or stored for the lightweight built-in database reachability probes.
 
 ---
 
 # LAN Remote Agents
 
-Projects can be managed on another trusted LAN computer without mounting their project directories as network shares.
+A project can live on another PC on the same local network without mounting that project's folder as a network share.
 
-A remote system runs an authenticated UPM LAN Agent.
+The remote PC can run an authenticated UPM LAN Agent.
 
-Remote features can include:
+Remote-agent features include:
 
 - Project scanning
-- PM2 status
-- Docker status
-- Service health
+- PM2 status reporting
+- Docker runtime reporting
+- Service-health checks
 - Backup creation
 - Backup verification
 - Backup retention
 - Backup encryption
-- Secondary mirroring
-- Storage-capacity reporting
+- Secondary backup mirroring
+- Remote storage-capacity reporting
 
-Project and backup paths remain local to the remote computer.
+Project and backup paths remain paths on the remote PC.
 
 ### Remote limitations
 
-Remote PM2 process controls are intentionally read-only in this version.
+Remote PM2 controls are intentionally read-only in this version.
 
-These operations remain local-host only:
+The following actions remain local-host only:
 
-- PM2 start / stop / restart / reload
+- PM2 start/stop/restart/reload
 - Editor launching
-- Source diff and recovery
+- Source diff/recovery
 - Dependency changes
 - File Tools
 - Text Sanitizer
 
-LAN Agents use bearer-token authentication, restricted filesystem roots, and HTTPS by default for non-loopback addresses.
+LAN Agent connections use bearer-token authentication, restricted filesystem roots, and HTTPS by default for non-loopback addresses.
 
-UPM is designed for trusted local networks and should not be exposed directly to the public internet.
+UPM is intended for trusted local networks and should not be exposed directly to the public internet.
 
 ---
 
 # TODO / FIX / NOTE Tracker
 
-Each project includes a lightweight task system.
+Each project has its own lightweight task list.
+
+Open **Tasks** from the project card to:
+
+- Add items
+- Edit items
+- Complete items
+- Search
+- Filter
+- Delete items
+- Scan the project for existing markers
 
 Supported task types are:
 
-- **TODO** - normal work
-- **FIX** - bugs, broken behavior, or cleanup
-- **NOTE** - reminders and project notes
+- **TODO** — normal work
+- **FIX** — bugs, broken behavior, and cleanup
+- **NOTE** — reminders and project notes
 
-Tasks can be:
-
-- Added
-- Edited
-- Completed
-- Searched
-- Filtered
-- Deleted
-
-UPM can also scan project files for markers including:
+The project scanner can discover markers such as:
 
 ```text
 TODO
@@ -704,54 +558,67 @@ XXX
 @todo
 ```
 
-Common task and roadmap files can also be scanned.
+It can also inspect common task files including:
 
-Discovered entries retain their source file and line information.
+```text
+TODO.md
+TODOS.md
+TASK.md
+TASKS.md
+ROADMAP.md
+NOTES.md
+TODO.txt
+TASKS.txt
+.todo
+.todo.md
+```
 
-Completing a discovered task inside UPM does not modify the original project source.
+Markdown checklists and nested task trees are supported.
+
+Discovered tasks retain their source file and line number. Re-scanning updates existing discoveries instead of creating duplicates.
+
+Task state is stored separately from the project source, so completing a discovered task in UPM does not rewrite the original file.
 
 ---
 
 # Dependencies
 
-The dependency viewer reads each project's `package.json`.
-
-It can display:
+The dependency viewer reads a project's `package.json` and can show:
 
 - Requested versions
 - Installed versions
 - Available npm versions
-- Outdated packages
+- Outdated dependencies
 
-Updates can be selected individually instead of forcing the complete project onto the newest available versions.
+Updates can be selected individually instead of forcing every dependency to the newest release.
 
-Dependency changes through LAN Remote Agents are intentionally disabled.
+Remote dependency changes are not allowed through LAN Agents.
 
 ---
 
 # File Tools
 
-UPM includes a collection of utilities for working with project files.
+UPM includes a collection of project file utilities.
 
 Available tools include:
 
 - Timestamped-file cleanup
 - Timestamped-file renaming
-- Duplicate detection
+- Duplicate-file detection
 - File inventory
 - Comment removal
 - Multi-step processing pipelines
 - Text Sanitizer
 
-File Tools write to separate output folders so original project files can remain untouched.
+All File Tools, including Text Sanitizer, use separate output folders so the original source can be left untouched.
 
 ---
 
 # Comment Remover
 
-JavaScript-aware comment processing can use `@babel/parser`.
+The comment-removal tool can use `@babel/parser` for JavaScript-aware processing.
 
-Multiple removal levels allow users to control how aggressively comments are removed instead of treating every comment identically.
+Different removal levels are available so users can choose how aggressively comments should be removed rather than treating every comment the same way.
 
 ---
 
@@ -761,7 +628,7 @@ Open:
 
 **File Tools → Text Sanitizer**
 
-The Text Sanitizer scans projects for problematic Unicode, rich-text symbols, invisible characters, common AI-generated punctuation and symbols, and other text issues.
+to scan a project for problematic Unicode, rich-text symbols, common AI-generated punctuation/symbols, invisible characters, and other text issues.
 
 ### Presets
 
@@ -774,9 +641,9 @@ The Text Sanitizer scans projects for problematic Unicode, rich-text symbols, in
 
 - 290+ explicit replacement rules
 - ASCII-equivalent cleanup
-- Smart-punctuation replacement
+- Smart punctuation replacement
 - Bullet and separator normalization
-- Fullwidth and compatibility normalization
+- Fullwidth/compatibility normalization
 - Arrow and math-symbol handling
 - Status-symbol handling
 - Invisible/control-character detection
@@ -785,24 +652,102 @@ The Text Sanitizer scans projects for problematic Unicode, rich-text symbols, in
 - Unicode tag detection
 - Variation-selector detection
 - Searchable findings
+- Per-file output selection
 - Highlighted Original / Sanitized previews
 - Previous/next change navigation
 - Line and column information
+- Searchable replacement catalog
 - Unicode code points
 - Replacement risk levels
 - Remaining non-ASCII reporting
-- JSON reports
-- CSV reports
+- JSON report export
+- CSV report export
 - SHA-256 stale-file protection
-- Optional verified backup before processing
-- Separate output tree
-- Run manifests
+- Separate File Tools output tree with preserved relative paths
+- Overwrite-or-skip behavior for existing output files
+- JSON run manifest written to the output folder
+- Optional full verified UPM backup before processing
 
 High-risk semantic replacements are disabled by default.
 
 Legitimate non-English and accented text is reported rather than automatically destroyed.
 
-The Text Sanitizer operates on local files and does not currently process projects through LAN Remote Agents.
+Text Sanitizer is currently a local-filesystem action and does not process projects through LAN Remote Agents. Sanitized files are written to a separate output tree; source files are not rewritten.
+
+---
+
+# System Overview & PC Stats
+
+The Overview tab provides a centralized view of UPM and host activity.
+
+### Operations
+
+UPM can summarize:
+
+- Registered projects
+- Running projects
+- Watched projects
+- Scheduled projects
+- Logical backups
+- Stored backup copies
+- Backup verification
+- Secondary mirror health
+- PM2 availability
+- PM2 crashes
+- Unexpected restarts
+- Service-health status
+- Recent warnings
+- Recent errors
+- Managed archive storage
+
+### Host performance
+
+Available host information includes:
+
+- Overall CPU usage
+- Per-core CPU usage
+- RAM usage
+- System uptime
+- UPM uptime
+- UPM process memory
+- UPM heap usage
+- System load average
+- CPU model
+- Logical processor count
+- Operating system
+- Architecture
+- Node.js version
+- Docker / Docker Desktop state
+
+UPM keeps lightweight CPU and memory history for up to seven days.
+
+History views include:
+
+- Last hour
+- Last 6 hours
+- Last 24 hours
+- Last 3 days
+- Last 7 days
+
+---
+
+# Storage & Backup Drives
+
+The Storage tab summarizes archive usage and backup destinations.
+
+When filesystem information is available, UPM can show:
+
+- Local PC or LAN Agent host
+- Backup path
+- Filesystem root
+- Free capacity
+- Total capacity
+- Disk-used percentage
+- Archive-copy count
+- Managed archive size
+- Destination availability
+
+Primary and secondary locations are displayed independently so disconnected USB drives, NAS paths, or remote mirrors are easy to identify.
 
 ---
 
@@ -826,9 +771,9 @@ Editor launching is restricted to the local host.
 
 # Open Repository
 
-Projects with detected or configured repositories can provide an **Open Repository** shortcut.
+Projects with a detected or configured repository can provide an **Open Repository** shortcut.
 
-This offers quick access to GitHub for:
+This gives quick access to GitHub for:
 
 - Commits
 - Branches
@@ -840,18 +785,18 @@ This offers quick access to GitHub for:
 
 # Setup Import / Export
 
-Use:
+Open:
 
 **Settings → Setup Transfer**
 
-to move UPM configuration between installations.
+to export or restore a portable UPM setup.
 
-Exports can contain:
+Exports can include:
 
 - Project definitions
 - Project paths
-- Backup locations
-- Include/exclude rules
+- Primary and secondary backup settings
+- Backup include/exclude rules
 - Retention settings
 - Watch intervals
 - Backup schedules
@@ -860,7 +805,7 @@ Exports can contain:
 - Recovery-journal settings
 - Non-secret runtime settings
 
-For safety, exports do **not** include:
+For safety, exports do **not** contain:
 
 - Dashboard password hashes
 - Session secrets
@@ -871,17 +816,37 @@ For safety, exports do **not** include:
 
 **Merge / Update Existing**
 
-Updates matching projects and adds new projects without removing unrelated entries.
+Updates matching projects and adds new ones while leaving unrelated projects alone.
 
 **Replace All Project Setups**
 
-Replaces the project list after imported paths and LAN Agent settings can be validated.
+Replaces the project list only after imported paths and LAN Agent configuration can be validated.
 
 ---
 
-# Help & Onboarding
+# Activity & Diagnostics
 
-UPM includes its own searchable help system.
+UPM keeps a searchable operational history.
+
+Recorded events can include:
+
+- Backups
+- Backup verification
+- Restores
+- Recovery operations
+- PM2 events
+- Settings changes
+- File Tools runs
+- Warnings
+- Errors
+
+The dashboard provides both general activity history and a more focused diagnostics view.
+
+---
+
+# Help & Tips
+
+UPM includes an in-app guide so common setup and troubleshooting information stays with the installed version.
 
 Open:
 
@@ -891,46 +856,45 @@ or:
 
 **More → Help & Tips**
 
-Topics include:
+The Help system includes:
 
-- First-run setup
-- Adding projects
-- Project discovery
-- Backups and restores
-- Backup mirroring
-- Verification
-- Encryption
-- Include/exclude rules
-- PM2
-- Logs
-- Docker startup gating
-- Service monitoring
-- File Tools
-- Text Sanitizer
-- Recovery
-- Persistent journals
-- Project Diff
-- Feature Packs
-- LAN Remote Agents
-- Authentication
-- Reverse proxies
-- Setup Transfer
-- Diagnostics
-- Common 401/403 problems
+- First-run guidance
+- Searchable help topics
+- Add Project guidance
+- Discover Projects guidance
+- Backup and restore help
+- Mirror and verification help
+- Encryption guidance
+- Include/exclude guidance
+- PM2 matching and controls
+- PM2 logs and history
+- Docker startup-gate help
+- Redis/MariaDB/PostgreSQL/Docker/HTTP/TCP health guidance
+- File Tools help
+- Text Sanitizer safety guidance
+- Recovery and journal guidance
+- Project Diff guidance
+- Feature Pack guidance
+- LAN Remote Agent guidance
+- Reverse-proxy guidance
+- Authentication guidance
+- Common 401/403 troubleshooting
+- Setup Transfer guidance
+- Diagnostics workflows
 
-The Projects page also includes a dismissible **Start Here** guide.
+The Projects page also includes a dismissible **Start Here** card.
 
-Contextual **?** controls provide shorter explanations for individual options.
+Contextual **?** markers provide short explanations for important settings, while the Help page contains the longer guidance.
 
-Tour and Tip panels use a visually distinct presentation so help content is not confused with normal application controls.
+Tour and Tip panels use a distinct border, badge, and visual treatment so guidance is clearly separated from normal settings and action cards.
 
 ---
 
 # Accessibility
 
-Accessibility is considered part of normal application behavior rather than a separate visual theme.
+UPM includes several accessibility-focused display options.
 
-Available display palettes include:
+Available palettes include:
 
 - Default Purple
 - Red-Green Friendly
@@ -938,33 +902,18 @@ Available display palettes include:
 - High Contrast
 - Monochrome
 
-Charts can use:
+Charts can also use solid, dashed, and dotted line differentiation.
 
-- Solid lines
-- Dashed lines
-- Dotted lines
-- Labels
-- Exact-value tooltips
+Status badges include text plus shape/border cues so state is not communicated by color alone.
 
-Important application states are not communicated through color alone.
-
-Status indicators combine color with elements such as:
-
-- Text
-- Icons
-- Borders
-- Shapes
-- Labels
-
-Additional accessibility behavior includes:
+The dashboard also includes:
 
 - Keyboard-focusable contextual help
-- Visible focus states
 - Reduced-motion support
 - Forced-color support
 - Mobile-friendly touch targets
 - Responsive dialogs
-- Scrollable navigation on small screens
+- Scrollable navigation on smaller screens
 
 ---
 
@@ -972,111 +921,62 @@ Additional accessibility behavior includes:
 
 Remote dashboard access is disabled by default.
 
-UPM is primarily intended for local use or trusted local networks.
+UPM is intended primarily for local or trusted-LAN use.
 
-Security protections include:
+Important protections include:
 
 - Optional dashboard authentication
 - Expiring signed sessions
 - Login lockout protection
 - Remote administrative permission checks
 - Remote filesystem permission checks
-- Restricted-client path redaction
-- Secret-value filtering
+- Local-path redaction for restricted remote clients
+- Secret values excluded from Settings responses
 - LAN Agent bearer-token authentication
 - LAN Agent filesystem allowlists
 - HTTPS requirements for remote LAN Agents by default
-- Electron renderer isolation
-- Electron sandboxing
+- Electron renderer isolation and sandboxing
 - External-link isolation
-- Backup archive path validation
-- Symlink protections
-- Backup verification
 
-Do **not** expose Ultimate Project Manager directly to the public internet without an appropriately secured surrounding network and authentication configuration.
+Do **not** expose Ultimate Project Manager directly to the public internet unless the surrounding network and authentication configuration are properly secured.
 
 ---
 
 # Optional Integrations
 
-UPM can make use of additional software when available.
+UPM can make use of several external tools when they are available:
 
-### PM2
+- **PM2** — process monitoring and control
+- **Git** — repository detection and additional recovery history
+- **Docker / Docker Desktop** — runtime monitoring and startup gating
+- **NVIDIA / Windows GPU telemetry** — per-process GPU usage
+- **VS Code and other editors** — local project launching
+- **GitHub repositories** — repository shortcuts
 
-Process monitoring and control.
-
-### Git
-
-Repository detection and an additional recovery source.
-
-### Docker / Docker Desktop
-
-Runtime monitoring and project startup gating.
-
-### NVIDIA / Windows GPU Telemetry
-
-Additional per-process GPU information.
-
-### Editors
-
-Direct local project launching.
-
-### GitHub
-
-Repository shortcuts and project navigation.
-
-These integrations are optional.
-
-UPM's project, backup, recovery, storage, task, and File Tools features do not require every integration to be installed.
+These integrations are optional. UPM's core project, backup, recovery, task, storage, and file-management features can still be used without all of them.
 
 ---
 
 # Before Updating or Moving UPM
 
-Keep copies of anything that cannot easily be recreated.
-
-Important items can include:
+Keep copies of anything that cannot easily be recreated, especially:
 
 - UPM runtime settings
 - Backup encryption keys
 - Important backup folders
-- UPM application data
-- Project state
+- UPM application data and project state you want to preserve
 
-Never assume Git contains ignored files, local configuration, secrets, or uncommitted work.
-
----
-
-# Source & Development
-
-Ultimate Project Manager is developed as an Electron and Node.js application.
-
-Developer setup, source requirements, build commands, supported build architectures, and release-building information are intentionally kept separate from this application-focused README.
-
-See:
-
-- [`BUILDING.md`](BUILDING.md) - source setup, development, compiling, and packaging
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) - contribution guidelines and project expectations
+Never assume Git contains ignored files, local configuration, secrets, or files that have not been committed.
 
 ---
 
-# Project & Support
+# Goal
 
-**Repository**
+Ultimate Project Manager is designed to make running multiple Node.js projects less fragile.
 
-https://github.com/Bacon-Fixation/Ultimate-Project-Manager
-
-**Issues**
-
-https://github.com/Bacon-Fixation/Ultimate-Project-Manager/issues
-
-**Support development**
-
-https://ko-fi.com/baconfixation
-
-The repository URL may appear in application metadata and documentation ahead of the public repository launch so releases and community resources are ready when the repository becomes available.
+Instead of relying on only Git, only PM2, or only a normal backup folder, UPM combines multiple management and recovery layers in one dashboard so there is usually another place to look when something goes wrong.
 
 ---
 
-**Much Love,**
+**Much Love,**  
 **-Bacon**

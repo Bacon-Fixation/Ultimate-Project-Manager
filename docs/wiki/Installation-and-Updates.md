@@ -57,9 +57,13 @@ Electron builds use one cross-platform helper. For example:
 ```bash
 npm run desktop:build -- --platform win --arch x64
 npm run desktop:build -- --platform linux --arch arm64
+# On Windows/macOS, use Docker for Linux/AppImage:
+npm run desktop:build -- --platform linux --arch x64 --docker
 npm run desktop:build -- --platform mac --arch universal
 npm run desktop:build:matrix
 ```
+
+AppImage requires Linux tooling and cannot be built directly on Windows or macOS. UPM detects this before launching electron-builder. Use `--docker` for a local Linux build from Windows/macOS, or use the native multi-platform GitHub Actions workflow. macOS DMG/ZIP output requires macOS.
 
 ## Updating
 
