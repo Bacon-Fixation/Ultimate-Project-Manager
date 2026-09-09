@@ -109,6 +109,7 @@ function help() {
     "  --docker    Build a Linux target in the official electron-builder Docker image",
     "  --web       Build the Windows NSIS web installer (requires UPM_WEB_PACKAGE_URL)",
     "  --dir       Build an unpacked directory instead of installers/packages",
+    "               Packaging is always run with electron-builder --publish never; GitHub Actions publishes separately.",
     "  --matrix    Print the supported release matrix",
     "  --help      Show this help",
     "",
@@ -237,7 +238,10 @@ function main() {
   }
 
   const config = web ? "build/electron-builder-web.cjs" : "build/electron-builder-slim.cjs";
-  const args = [builderCli, "--config", config];
+  // electron-builder v26 implicitly publishes tag builds in CI unless publish mode is explicit.
+  // UPM intentionally separates packaging from GitHub release publication, so build jobs must
+  // never receive or require a GitHub token. The release job uploads the completed artifacts.
+  const args = [builderCli, "--config", config, "--publish", "never"];
   if (effectivePlatform === "win") args.push("--win", web ? "nsis-web" : "nsis");
   else if (effectivePlatform === "linux") args.push("--linux", "AppImage", "tar.xz");
   else if (effectivePlatform === "mac") args.push("--mac", "dmg", "zip");

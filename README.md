@@ -1,4 +1,4 @@
-# Ultimate Project Manager v0.10.9
+# Ultimate Project Manager v0.10.10
 
 Ultimate Project Manager (UPM) is a local desktop dashboard for managing, monitoring, backing up, and recovering multiple Node.js projects from one place.
 
@@ -67,6 +67,8 @@ Current Electron 44 builds target modern 64-bit systems:
 Release artifacts are architecture-specific by default so users only download the Electron runtime they actually need. Windows can also use a small NSIS web-installer bootstrap that downloads the matching x64 or ARM64 application package during installation. Linux releases can use AppImage for convenience or `tar.xz` for a smaller compressed download.
 
 ### Build-host rules
+
+**Release safety:** package builds explicitly run electron-builder with `--publish never`. GitHub Actions collects artifacts first and only the separate tag-only release job receives temporary `contents: write` permission to publish them. No Personal Access Token is required for the standard release workflow.
 
 Electron packaging is not fully cross-compilable. In particular, AppImage requires Linux tooling. UPM now enforces the supported host before launching electron-builder so unsupported cross-builds fail with a useful message instead of a missing `mksquashfs` executable.
 

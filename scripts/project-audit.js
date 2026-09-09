@@ -187,6 +187,10 @@ requireAudit(
 );
 const electronBuildHelper = read("scripts/electron-build.js");
 requireAudit(
+  electronBuildHelper.includes('"--publish", "never"'),
+  "Electron packaging must pass --publish never so v26 tag builds cannot implicitly publish.",
+);
+requireAudit(
   electronBuildHelper.includes("Linux AppImage cannot be built directly") &&
     electronBuildHelper.includes("electronuserland/builder:24") &&
     electronBuildHelper.includes("UPM_ELECTRON_DOCKER_IMAGE"),
