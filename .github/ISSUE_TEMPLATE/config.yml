@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ultimate Project Manager Wiki
+    url: https://github.com/Bacon-Fixation/Ultimate-Project-Manager/wiki
+    about: Check setup, configuration, recovery, and troubleshooting guides before opening an issue.
+  - name: Support development on Ko-fi
+    url: https://ko-fi.com/baconfixation
+    about: Optional support for continued development.

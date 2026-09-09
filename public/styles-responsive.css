@@ -1,0 +1,525 @@
+/* Responsive layout hardening */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
+.dashboard-content,
+.dashboard-section,
+.dashboard-section-body,
+.topbar-copy,
+.top-actions,
+.section-heading > *,
+.dialog-heading > *,
+.dialog-actions > *,
+.dialog-footer > *,
+.project-title-main,
+.project-title-main > div,
+.pm2-heading > *,
+.pm2-process-title > *,
+.service-health-heading > *,
+.service-health-item-title > * {
+  min-width: 0;
+}
+
+@media (min-width: 1500px) {
+  .shell {
+    width: min(1680px, calc(100% - 48px));
+  }
+  .topbar-copy {
+    max-width: 960px;
+  }
+  .host-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .storage-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  dialog:has(.extra-wide) {
+    width: min(1200px, calc(100% - 40px));
+  }
+  #projectDialog.project-settings-modal {
+    width: min(1080px, calc(100% - 40px));
+  }
+  #settingsDialog.runtime-settings-modal {
+    width: min(1120px, calc(100% - 40px));
+  }
+}
+
+@media (max-width: 1120px) {
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    flex-direction: column;
+  }
+  .top-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .top-action-menu[open] {
+    flex-basis: 100%;
+  }
+  .dashboard-section-heading,
+  .section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .dashboard-section-heading .section-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .pm2-heading,
+  .service-health-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pm2-heading-actions,
+  .service-health-heading-actions {
+    justify-content: flex-start;
+  }
+  .host-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+dialog,
+dialog:has(.extra-wide),
+#projectDialog.project-settings-modal,
+#settingsDialog.runtime-settings-modal,
+#directoryPickerDialog.directory-picker-modal,
+#dependenciesDialog,
+#fileToolsDialog,
+#pm2LogsDialog,
+#featurePackDialog,
+#diffDialog {
+  max-height: calc(100dvh - 24px);
+  overscroll-behavior: contain;
+}
+
+.project-settings-dialog,
+.runtime-settings-dialog,
+.directory-picker-dialog {
+  max-height: calc(100dvh - 26px);
+}
+
+.project-settings-body,
+.runtime-settings-body,
+.directory-locations-panel,
+.directory-list,
+.discovery-list,
+.dependency-table-wrap,
+.file-tools-table-wrap,
+.pm2-log-output,
+.diff-file-list,
+.diff-detail,
+.recovery-list,
+.recovery-detail,
+.feature-pack-file-list {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.dependency-table-wrap,
+.file-tools-table-wrap,
+.process-history-wrap,
+.pm2-log-grid,
+.diff-layout,
+.recovery-layout {
+  max-width: 100%;
+}
+
+.backup-title-line,
+.pm2-log-pane-heading,
+.metric-heading,
+.host-chart-heading,
+.service-health-item-meta {
+  flex-wrap: wrap;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .project-card:hover,
+  .stat:hover,
+  .health-stat:hover,
+  .directory-entry:hover,
+  .directory-quick-button:hover,
+  .pm2-process:hover,
+  .discovery-row:hover:not(.disabled),
+  .button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .topbar-copy .muted {
+    max-width: none;
+  }
+  .dashboard-tabs,
+  .project-settings-tabs,
+  .runtime-settings-tabs {
+    scroll-snap-type: x proximity;
+  }
+  .dashboard-tab,
+  .project-settings-tab,
+  .runtime-settings-tab {
+    scroll-snap-align: start;
+  }
+  .dashboard-tabs::after,
+  .project-settings-tabs::after,
+  .runtime-settings-tabs::after {
+    content: "";
+    flex: 0 0 2px;
+  }
+  .host-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .service-health-item-meta {
+    align-items: flex-start;
+  }
+  .pm2-heading,
+  .pm2-process-title,
+  .service-health-item-title {
+    align-items: flex-start;
+  }
+  .pm2-heading-actions,
+  .service-health-heading-actions,
+  .pm2-process-actions {
+    max-width: 100%;
+  }
+  .activity-row {
+    align-items: flex-start;
+  }
+  .activity-message,
+  .activity-time {
+    overflow-wrap: anywhere;
+  }
+  .empty {
+    padding: 20px 14px;
+  }
+  .settings-group,
+  .settings-group-flat,
+  .settings-secret-card,
+  .service-health-config-card {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar-copy .muted {
+    display: none;
+  }
+  .topbar {
+    padding: 14px;
+  }
+  .dashboard-section-heading .muted {
+    margin-bottom: 0;
+  }
+  .host-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .weekday-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .weekday-grid label {
+    min-height: 44px;
+    justify-content: flex-start;
+  }
+  .service-health-item-meta {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .task-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .weekday-grid,
+  .task-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-tab,
+  .project-settings-tab,
+  .runtime-settings-tab {
+    min-width: 84px;
+  }
+  .status-pill,
+  .badge {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.2;
+  }
+}
+
+@media (max-height: 680px) {
+  dialog,
+  dialog:has(.extra-wide),
+  #projectDialog.project-settings-modal,
+  #settingsDialog.runtime-settings-modal,
+  #directoryPickerDialog.directory-picker-modal,
+  #dependenciesDialog,
+  #fileToolsDialog,
+  #pm2LogsDialog,
+  #featurePackDialog,
+  #diffDialog {
+    max-height: calc(100dvh - 8px);
+  }
+  .project-settings-dialog,
+  .runtime-settings-dialog,
+  .directory-picker-dialog {
+    max-height: calc(100dvh - 10px);
+  }
+  .project-settings-heading-copy,
+  .runtime-settings-heading-copy,
+  .directory-picker-heading .compact-copy {
+    display: none;
+  }
+  .project-settings-heading,
+  .runtime-settings-heading,
+  .directory-picker-heading {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .project-settings-nav,
+  .runtime-settings-nav {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .project-settings-tab,
+  .runtime-settings-tab {
+    min-height: 36px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .project-settings-body,
+  .runtime-settings-body {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+  .pm2-log-output {
+    min-height: 170px;
+    max-height: 42dvh;
+  }
+  .metric-chart {
+    height: 170px;
+  }
+  .diff-layout,
+  .recovery-layout {
+    min-height: 280px;
+  }
+  .diff-file-list,
+  .diff-detail,
+  .recovery-list,
+  .recovery-detail {
+    max-height: 48dvh;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .dialog-card {
+    padding: 10px;
+  }
+  .dialog-heading {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+  }
+  .dialog-heading .muted,
+  .compact-copy {
+    display: none;
+  }
+  .dialog-actions,
+  .dialog-footer,
+  .pinned-footer {
+    margin-top: 10px;
+  }
+  .dashboard-nav {
+    top: 4px;
+  }
+  .pm2-log-output {
+    min-height: 130px;
+    max-height: 34dvh;
+  }
+}
+
+@media (min-width: 1500px) {
+  .storage-backup-summary {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .host-core-charts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .storage-backup-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .storage-drive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .overview-summary.stats,
+  .storage-backup-summary {
+    grid-template-columns: 1fr;
+  }
+  .overview-block-heading,
+  .storage-destinations-heading,
+  .host-core-heading,
+  .storage-drive-group-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .storage-destinations-heading .button,
+  .storage-collapse-toggle {
+    width: 100%;
+  }
+  .host-core-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .host-core-chart-panel .host-chart-heading .muted {
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .overview-summary-metrics,
+  .storage-drive-metrics,
+  .host-core-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .overview-page-heading {
+    align-items: stretch;
+  }
+  .overview-page-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .overview-page-actions .button {
+    width: 100%;
+  }
+  .overview-heading-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    width: 100%;
+  }
+  .overview-collapse-toggle,
+  .storage-collapse-toggle {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .overview-heading-actions {
+    grid-template-columns: 1fr;
+  }
+  .overview-heading-actions .overview-collapse-toggle {
+    width: 100%;
+  }
+}
+
+/* Help center responsive layout */
+@media (max-width: 1100px) {
+  .help-onboarding {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    padding: 20px 18px 18px;
+  }
+  .help-onboarding-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .help-onboarding-actions .button {
+    flex: 1 1 180px;
+  }
+  .help-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .help-onboarding {
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 20px 14px 14px;
+  }
+  .help-onboarding-steps li {
+    padding: 10px 11px;
+  }
+  .help-page-heading,
+  .help-hero,
+  .help-topic > summary {
+    grid-template-columns: 1fr;
+  }
+  .help-page-heading .button {
+    width: 100%;
+  }
+  .help-onboarding-steps,
+  .help-quick-grid {
+    grid-template-columns: 1fr;
+  }
+  .help-search-controls {
+    grid-template-columns: 1fr;
+  }
+  .help-search-controls .button,
+  .help-quick-actions .button,
+  .help-onboarding-actions .button {
+    width: 100%;
+  }
+  .help-topic > summary {
+    gap: 5px;
+    padding-right: 50px;
+    position: relative;
+  }
+  .help-topic > summary::after {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .help-topic[open] > summary::after {
+    transform: translateY(-50%);
+  }
+  .help-guidance-frame::before {
+    right: 10px;
+    font-size: 0.58rem;
+  }
+  .help-tip::after {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    width: auto;
+    max-width: none;
+    transform: none;
+    z-index: 150;
+  }
+  .help-tip::before {
+    display: none;
+  }
+  .help-tip:hover::after,
+  .help-tip:focus-visible::after {
+    transform: none;
+  }
+}

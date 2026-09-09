@@ -1,0 +1,141 @@
+{
+  "name": "ultimate-project-manager",
+  "version": "0.10.8",
+  "author": {
+    "name": "Bacon Fixation",
+    "url": "https://github.com/Bacon-Fixation/"
+  },
+  "private": true,
+  "description": "Ultimate Project Manager: Full dashboard with backups, PM2/Docker monitoring, LAN Remote Agents, recovery, file tools, guidance, and local/remote controls.",
+  "main": "desktop/main.js",
+  "type": "commonjs",
+  "bin": {
+    "ultimate-project-manager": "src/cli.js"
+  },
+  "scripts": {
+    "start": "pm2 start ecosystem.config.js --only Ultimate_Project_Manager",
+    "reload": "pm2 reload Ultimate_Project_Manager --update-env",
+    "restart": "pm2 restart Ultimate_Project_Manager --update-env",
+    "stop": "pm2 stop Ultimate_Project_Manager",
+    "logs": "pm2 logs Ultimate_Project_Manager --lines 200",
+    "status": "pm2 show Ultimate_Project_Manager",
+    "serve": "node src/index.js",
+    "desktop": "electron .",
+    "desktop:pack": "node scripts/electron-build.js --dir",
+    "desktop:build": "node scripts/electron-build.js",
+    "desktop:build:web": "node scripts/electron-build.js --platform win --arch all --web",
+    "desktop:build:matrix": "node scripts/electron-build.js --matrix",
+    "desktop:size": "node scripts/electron-size-report.js",
+    "cli": "node src/cli.js",
+    "config:init": "node src/config/init-env.js",
+    "setup": "node src/config/setup-wizard.js",
+    "check": "node scripts/check-js-syntax.js && node scripts/project-audit.js",
+    "test": "node scripts/run-tests.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:strict": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "quality": "npm run check && npm test && npm run lint:strict && npm run format:check",
+    "quality:fix": "npm run lint:fix && npm run format",
+    "auth:hash": "node src/security/generate-password-hash.js",
+    "encryption:key": "node src/security/generate-encryption-key.js",
+    "agent": "node src/remote-agent/index.js",
+    "agent:pm2": "pm2 start ecosystem.agent.config.js --only Ultimate_Project_Manager_LAN_Agent"
+  },
+  "dependencies": {
+    "@babel/parser": "^8.0.4",
+    "express": "^5.2.1",
+    "ignore": "^7.0.9",
+    "pm2": "^7.0.4",
+    "tar": "^7.5.22"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
+  "devDependencies": {
+    "eslint": "10.10.0",
+    "globals": "17.12.0",
+    "prettier": "3.9.6",
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.baconfixation.ultimateprojectmanager",
+    "productName": "Ultimate Project Manager",
+    "asar": {
+      "smartUnpack": true
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "src/**/*",
+      "public/**/*",
+      "package.json",
+      ".env.example",
+      "!data/**",
+      "!test/**",
+      "!release/**",
+      "!**/node_modules/**/*.map",
+      "!**/node_modules/**/*.d.ts",
+      "!**/node_modules/**/{test,tests,__tests__,example,examples,benchmark,benchmarks}/**",
+      "!**/node_modules/**/.github/**",
+      "!**/node_modules/**/coverage/**",
+      "!**/node_modules/**/.nyc_output/**"
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Ultimate-Project-Manager-Windows-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ultimate Project Manager"
+    },
+    "electronLanguages": [
+      "en-US"
+    ],
+    "compression": "maximum",
+    "mac": {
+      "icon": "icon.png",
+      "category": "public.app-category.developer-tools",
+      "minimumSystemVersion": "13.0",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "Ultimate-Project-Manager-macOS-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "icon.png",
+      "category": "Development",
+      "executableName": "ultimate-project-manager",
+      "target": [
+        "AppImage",
+        "tar.xz"
+      ],
+      "artifactName": "Ultimate-Project-Manager-Linux-${version}-${arch}.${ext}",
+      "syncDesktopName": true
+    }
+  },
+  "allowScripts": {
+    "electron-winstaller": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bacon-Fixation/Ultimate-Project-Manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Bacon-Fixation/Ultimate-Project-Manager/issues"
+  },
+  "homepage": "https://github.com/Bacon-Fixation/Ultimate-Project-Manager#readme",
+  "funding": "https://ko-fi.com/baconfixation",
+  "desktopName": "com.baconfixation.ultimateprojectmanager.desktop"
+}

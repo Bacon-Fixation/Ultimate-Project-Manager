@@ -1,0 +1,1334 @@
+/* --------------------------------------------------------------------------
+   v0.10.2 Cohesive UI system
+   -------------------------------------------------------------------------- */
+:root {
+  --bh-surface-raised: #1d1d23;
+  --bh-surface-inset: #0f0f13;
+  --bh-surface-overlay: #202027;
+  --bh-border-subtle: rgba(108, 108, 108, 0.48);
+  --bh-border-strong: rgba(145, 145, 153, 0.78);
+  --bh-focus-ring: 0 0 0 3px rgba(var(--bh-accent-rgb), 0.22);
+  --bh-control-height: 40px;
+  --bh-control-height-small: 34px;
+  --bh-control-height-touch: 44px;
+  --bh-radius-small: 7px;
+  --bh-radius-large: 12px;
+  --bh-space-1: 4px;
+  --bh-space-2: 8px;
+  --bh-space-3: 12px;
+  --bh-space-4: 16px;
+  --bh-space-5: 20px;
+  --bh-space-6: 24px;
+  --bh-space-8: 32px;
+  --bh-transition-fast: 140ms ease;
+  --bh-transition: 180ms ease;
+}
+
+body {
+  line-height: 1.45;
+}
+
+::selection {
+  background: rgba(var(--bh-accent-rgb), 0.32);
+  color: var(--bh-text);
+}
+
+html {
+  scrollbar-color: var(--bh-border-light) var(--bh-surface-inset);
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  padding: 9px 12px;
+  border: 2px solid var(--bh-accent);
+  border-radius: var(--bh-radius-small);
+  background: var(--bh-surface-overlay);
+  color: var(--bh-text);
+  box-shadow: var(--bh-shadow-hover);
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 24px));
+  transition: transform var(--bh-transition-fast);
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: none;
+}
+
+:is(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--bh-accent);
+  outline-offset: 2px;
+  box-shadow: var(--bh-focus-ring);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--bh-text);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+h1,
+h2 {
+  font-weight: 800;
+}
+h3,
+h4 {
+  font-weight: 750;
+}
+
+.eyebrow,
+.meta-label,
+.action-menu-label,
+.help-search-label {
+  font-weight: 800;
+}
+
+.muted,
+.hint,
+.meta-label,
+.backup-meta {
+  line-height: 1.48;
+}
+
+.topbar,
+.dashboard-nav,
+.card,
+.project-card,
+.overview-block,
+.dialog-card,
+.auth-card,
+.metric-panel,
+.settings-group,
+.settings-group-flat,
+.file-tools-workflow,
+.file-tools-option,
+.service-health-config-card,
+.recovery-panel,
+.diff-panel,
+.pm2-events-panel {
+  border-color: var(--bh-border-subtle);
+}
+
+.topbar {
+  border-radius: var(--bh-radius-large);
+}
+.dashboard-nav {
+  border-radius: 10px;
+}
+
+.dashboard-section-heading,
+.section-heading:not(.compact-heading) {
+  padding-bottom: var(--bh-space-3);
+  border-bottom: 1px solid var(--bh-border-subtle);
+}
+.dashboard-section-heading > div:first-child,
+.section-heading > div:first-child {
+  min-width: 0;
+}
+.dashboard-section-heading .muted,
+.section-heading .muted {
+  max-width: 82ch;
+}
+
+.card,
+.project-card,
+.overview-block,
+.metric-panel,
+.settings-group,
+.file-tools-workflow,
+.file-tools-option,
+.service-health-config-card,
+.recovery-panel,
+.diff-panel,
+.pm2-events-panel {
+  border-radius: var(--bh-radius-large);
+}
+
+.card,
+.project-card,
+.overview-block,
+.metric-panel,
+.service-health-config-card,
+.recovery-panel,
+.diff-panel,
+.pm2-events-panel {
+  background-color: rgba(255, 255, 255, 0.026);
+}
+
+.card:hover,
+.overview-block:hover,
+.metric-panel:hover,
+.service-health-config-card:hover,
+.recovery-panel:hover,
+.diff-panel:hover {
+  border-color: var(--bh-border-light);
+}
+
+.button,
+.icon-button,
+.project-collapse-button,
+.directory-entry,
+.directory-quick-button,
+.dashboard-tab,
+.project-settings-tab,
+.runtime-settings-tab {
+  min-height: var(--bh-control-height);
+  border-radius: var(--bh-radius-small);
+}
+.button,
+.icon-button {
+  font-weight: 650;
+}
+.button.small,
+.button.tiny {
+  min-height: var(--bh-control-height-small);
+}
+.button.primary {
+  box-shadow: 0 3px 12px rgba(var(--bh-accent-rgb), 0.22);
+}
+.button.danger {
+  font-weight: 700;
+}
+.button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+}
+
+.status-pill,
+.badge {
+  min-height: 26px;
+  border-color: var(--bh-border-subtle);
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+input,
+textarea,
+select {
+  border-radius: var(--bh-radius-small);
+  border-color: var(--bh-border-subtle);
+  background: var(--bh-surface-inset);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select {
+  min-height: var(--bh-control-height);
+}
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: var(--bh-border-light);
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--bh-accent);
+  box-shadow: var(--bh-focus-ring);
+}
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--bh-text-muted) 72%, transparent);
+}
+
+.form-row,
+.compact-form-row {
+  gap: var(--bh-space-2);
+}
+.form-row > label,
+.compact-form-row > label,
+.settings-group label:not(.check-row),
+.settings-group-flat label:not(.check-row) {
+  color: var(--bh-text-soft);
+}
+
+.check-row,
+.compact-check,
+.file-tools-option,
+.warning-option {
+  border-radius: var(--bh-radius-small);
+}
+.check-row,
+.compact-check {
+  transition:
+    border-color var(--bh-transition),
+    background var(--bh-transition);
+}
+.check-row:hover,
+.compact-check:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settings-group,
+.settings-group-flat {
+  padding: var(--bh-space-4);
+  background: rgba(255, 255, 255, 0.018);
+}
+.settings-group legend {
+  padding-inline: var(--bh-space-2);
+  color: var(--bh-text-soft);
+}
+
+.dialog-card,
+.auth-card {
+  border-radius: var(--bh-radius-large);
+  background: var(--bh-surface);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.52);
+}
+.dialog-heading {
+  padding-bottom: var(--bh-space-3);
+  border-bottom: 1px solid var(--bh-border-subtle);
+}
+.dialog-footer,
+.dialog-actions {
+  padding-top: var(--bh-space-3);
+  border-top: 1px solid var(--bh-border-subtle);
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.dashboard-tab,
+.project-settings-tab,
+.runtime-settings-tab {
+  font-weight: 700;
+}
+.dashboard-tab.is-active,
+.dashboard-tab[aria-selected="true"],
+.project-settings-tab.is-active,
+.runtime-settings-tab.is-active {
+  border-color: rgba(var(--bh-accent-rgb), 0.58);
+  background: rgba(var(--bh-accent-rgb), 0.15);
+}
+
+.action-menu-panel {
+  border-color: var(--bh-border-strong);
+  border-radius: 10px;
+  background: var(--bh-surface-raised);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
+.action-menu-group {
+  border-radius: var(--bh-radius-small);
+}
+.action-menu-group + .action-menu-group {
+  border-color: var(--bh-border-subtle);
+}
+
+.project-meta,
+.pm2-section,
+.service-health-item,
+.change-item,
+.storage-grid > div,
+.host-stat,
+.health-stat {
+  border-radius: var(--bh-radius-small);
+}
+.meta-row {
+  padding-block: 2px;
+}
+.project-card .project-meta {
+  padding: var(--bh-space-3);
+  border: 1px solid var(--bh-border-subtle);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.empty {
+  border-color: var(--bh-border-subtle);
+  background: rgba(255, 255, 255, 0.018);
+  line-height: 1.55;
+}
+
+:is(.dependency-table, .file-tools-table, .text-sanitizer-results) {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+:is(.dependency-table, .file-tools-table, .text-sanitizer-results) th {
+  background: var(--bh-surface-inset);
+  color: var(--bh-text-soft);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+:is(.dependency-table, .file-tools-table, .text-sanitizer-results) td,
+:is(.dependency-table, .file-tools-table, .text-sanitizer-results) th {
+  border-color: var(--bh-border-subtle);
+}
+:is(.dependency-table, .file-tools-table, .text-sanitizer-results) tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+code,
+pre,
+.pm2-log-output,
+.diff-detail,
+.recovery-detail {
+  border-color: var(--bh-border-subtle);
+  background-color: var(--bh-surface-inset);
+}
+
+.toast {
+  border: 1px solid var(--bh-border-strong);
+  border-radius: 10px;
+  background: var(--bh-surface-overlay);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
+}
+
+/* Guidance is intentionally visually distinct from editable settings and controls. */
+.help-guidance-frame,
+.help-tip-card,
+.help-callout {
+  border-left-color: var(--bh-accent) !important;
+}
+.help-guidance-frame {
+  box-shadow:
+    inset 4px 0 0 var(--bh-accent),
+    inset 0 0 22px rgba(var(--bh-accent-rgb), 0.045),
+    0 0 0 1px rgba(var(--bh-accent-rgb), 0.1);
+}
+.help-warning,
+.file-tools-safety-note,
+.text-sanitizer-safety,
+.text-sanitizer-warning,
+.recovery-warning,
+.warning-option {
+  border-left: 4px solid var(--bh-warning);
+  background:
+    linear-gradient(90deg, rgba(var(--bh-warning-rgb), 0.1), transparent 66%),
+    rgba(var(--bh-warning-rgb), 0.035);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled),
+  .directory-entry:hover,
+  .directory-quick-button:hover,
+  .dashboard-tab:hover,
+  .project-settings-tab:hover,
+  .runtime-settings-tab:hover {
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .button,
+  .icon-button,
+  .project-collapse-button,
+  .directory-entry,
+  .directory-quick-button {
+    min-height: var(--bh-control-height-touch);
+  }
+  .button.small,
+  .button.tiny {
+    min-height: 42px;
+  }
+  .dashboard-section-heading,
+  .section-heading:not(.compact-heading) {
+    padding-bottom: var(--bh-space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled),
+  .project-card:hover,
+  .stat:hover,
+  .change-item:hover {
+    transform: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .button,
+  .icon-button,
+  .badge,
+  .status-pill,
+  .card,
+  .project-card,
+  input,
+  select,
+  textarea,
+  .help-guidance-frame {
+    forced-color-adjust: auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   v0.10.2 layout, toolbar, runtime-mode, and Help spacing hardening
+   -------------------------------------------------------------------------- */
+.dashboard-section-heading {
+  padding: clamp(12px, 1.2vw, 16px);
+}
+
+.dashboard-section-body {
+  padding: clamp(12px, 1.25vw, 18px);
+}
+
+.top-actions {
+  max-width: 580px;
+  align-content: center;
+}
+
+.top-actions > .button,
+.top-action-menu > summary {
+  white-space: nowrap;
+}
+
+.top-action-menu-panel {
+  width: 100%;
+}
+
+body[data-runtime-mode="browser"] #desktopModeStatus {
+  border-color: var(--bh-border-strong);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--bh-text-soft);
+}
+
+body[data-runtime-mode="desktop"] #desktopModeStatus {
+  border-color: rgba(var(--bh-success-rgb), 0.55);
+}
+
+.help-dashboard {
+  gap: clamp(12px, 1.35vw, 18px);
+  padding: clamp(14px, 1.45vw, 20px);
+}
+
+.help-hero,
+.help-quick-card,
+.help-footer-guide {
+  padding: clamp(14px, 1.4vw, 20px);
+}
+
+.help-hero,
+.help-quick-card,
+.help-topic,
+.help-footer-guide,
+.help-no-results {
+  min-width: 0;
+}
+
+.help-hero-copy,
+.help-search-row,
+.help-quick-card > *,
+.help-footer-guide > * {
+  min-width: 0;
+}
+
+.help-search-controls input {
+  width: 100%;
+  min-width: 0;
+}
+
+.help-topic > summary {
+  padding: clamp(14px, 1.2vw, 18px);
+}
+
+.help-topic-body {
+  padding: 0 clamp(14px, 1.35vw, 20px) clamp(14px, 1.35vw, 20px);
+}
+
+.help-topic-body > :is(p, ul, ol):first-child {
+  margin-top: clamp(12px, 1.2vw, 16px);
+}
+
+@media (max-width: 1120px) and (min-width: 768px) {
+  .top-action-menu-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .top-actions {
+    max-width: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dashboard-section-heading,
+  .dashboard-section-body,
+  .help-dashboard {
+    padding: 12px;
+  }
+
+  .help-hero,
+  .help-quick-card,
+  .help-footer-guide {
+    padding: 14px;
+  }
+
+  .help-topic > summary {
+    padding: 14px 50px 14px 14px;
+  }
+
+  .help-topic-body {
+    padding: 0 14px 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-section-heading,
+  .dashboard-section-body,
+  .help-dashboard {
+    padding: 10px;
+  }
+
+  .help-hero,
+  .help-quick-card,
+  .help-footer-guide {
+    padding: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   UPM icon system - v0.10.2 branded icon pass
+   -------------------------------------------------------------------------- */
+:root {
+  --upm-icon-size: 18px;
+}
+
+/* Keep the product identity visible in both the desktop and browser shells. */
+.topbar-copy {
+  position: relative;
+  min-height: 72px;
+  padding-left: 86px;
+}
+
+.topbar-copy::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  background: url("/icons/upm-app-icon-256.png") center / contain no-repeat;
+  filter: drop-shadow(0 8px 18px rgba(var(--bh-accent-rgb), 0.25));
+}
+
+.auth-card::before {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: 0 0 14px;
+  border-radius: 17px;
+  background: url("/icons/upm-app-icon-256.png") center / contain no-repeat;
+  filter: drop-shadow(0 8px 18px rgba(var(--bh-accent-rgb), 0.2));
+}
+
+/* Icon registry. This keeps markup semantic while allowing one consistent
+   glyph system across browser and Electron modes. */
+[data-upm-icon="about"] {
+  --upm-icon-url: url("/icons/about.png");
+}
+[data-upm-icon="activity"] {
+  --upm-icon-url: url("/icons/activity.png");
+}
+[data-upm-icon="authentication"] {
+  --upm-icon-url: url("/icons/authentication.png");
+}
+[data-upm-icon="backups"] {
+  --upm-icon-url: url("/icons/backups.png");
+}
+[data-upm-icon="diagnostics"] {
+  --upm-icon-url: url("/icons/diagnostics.png");
+}
+[data-upm-icon="discover"] {
+  --upm-icon-url: url("/icons/discover.png");
+}
+[data-upm-icon="docker"] {
+  --upm-icon-url: url("/icons/docker.png");
+}
+[data-upm-icon="editor"] {
+  --upm-icon-url: url("/icons/editor.png");
+}
+[data-upm-icon="encrypt"] {
+  --upm-icon-url: url("/icons/encrypt.png");
+}
+[data-upm-icon="export"] {
+  --upm-icon-url: url("/icons/export.png");
+}
+[data-upm-icon="feature-packs"] {
+  --upm-icon-url: url("/icons/feature-packs.png");
+}
+[data-upm-icon="file-tools"] {
+  --upm-icon-url: url("/icons/file-tools.png");
+}
+[data-upm-icon="health"] {
+  --upm-icon-url: url("/icons/health.png");
+}
+[data-upm-icon="help-tips"] {
+  --upm-icon-url: url("/icons/help-tips.png");
+}
+[data-upm-icon="home"] {
+  --upm-icon-url: url("/icons/home.png");
+}
+[data-upm-icon="import"] {
+  --upm-icon-url: url("/icons/import.png");
+}
+[data-upm-icon="journal"] {
+  --upm-icon-url: url("/icons/journal.png");
+}
+[data-upm-icon="mirror"] {
+  --upm-icon-url: url("/icons/mirror.png");
+}
+[data-upm-icon="pm2"] {
+  --upm-icon-url: url("/icons/pm2.png");
+}
+[data-upm-icon="projects"] {
+  --upm-icon-url: url("/icons/projects.png");
+}
+[data-upm-icon="quick-help"] {
+  --upm-icon-url: url("/icons/quick-help.png");
+}
+[data-upm-icon="recovery"] {
+  --upm-icon-url: url("/icons/recovery.png");
+}
+[data-upm-icon="remote-access"] {
+  --upm-icon-url: url("/icons/remote-access.png");
+}
+[data-upm-icon="repository"] {
+  --upm-icon-url: url("/icons/repository.png");
+}
+[data-upm-icon="settings"] {
+  --upm-icon-url: url("/icons/settings.png");
+}
+[data-upm-icon="system"] {
+  --upm-icon-url: url("/icons/system.png");
+}
+[data-upm-icon="text-sanitizer"] {
+  --upm-icon-url: url("/icons/text-sanitizer.png");
+}
+[data-upm-icon="tools"] {
+  --upm-icon-url: url("/icons/tools.png");
+}
+[data-upm-icon="updates"] {
+  --upm-icon-url: url("/icons/updates.png");
+}
+[data-upm-icon="verify"] {
+  --upm-icon-url: url("/icons/verify.png");
+}
+
+.button[data-upm-icon],
+.dashboard-tab[data-upm-icon],
+.project-settings-tab[data-upm-icon],
+.runtime-settings-tab[data-upm-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.button[data-upm-icon]::before,
+.dashboard-tab[data-upm-icon]::before,
+.project-settings-tab[data-upm-icon]::before,
+.runtime-settings-tab[data-upm-icon]::before,
+h2[data-upm-icon]::before,
+h3[data-upm-icon]::before {
+  content: "";
+  flex: 0 0 auto;
+  width: var(--upm-icon-size);
+  height: var(--upm-icon-size);
+  background-image: var(--upm-icon-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.dashboard-tab[data-upm-icon]::before,
+.project-settings-tab[data-upm-icon]::before,
+.runtime-settings-tab[data-upm-icon]::before {
+  width: 20px;
+  height: 20px;
+}
+
+h2[data-upm-icon],
+h3[data-upm-icon] {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+h2[data-upm-icon]::before {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 4px 10px rgba(var(--bh-accent-rgb), 0.18));
+}
+
+h3[data-upm-icon]::before {
+  width: 24px;
+  height: 24px;
+}
+
+/* Section-heading h2 elements historically used ::before for the accent rail.
+   Icon-bearing headings also use ::before, so explicitly return the icon to
+   normal flex flow and clear the old absolute-position/rail properties. */
+.section-heading h2[data-upm-icon] {
+  position: static;
+  padding-left: 0;
+}
+
+.section-heading h2[data-upm-icon]::before {
+  position: static;
+  inset: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/* Keep dashboard section copy and actions in separate layout tracks. This
+   prevents large heading icons or wrapped action groups from competing for the
+   same horizontal space at intermediate window widths. */
+.dashboard-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 10px;
+}
+
+.dashboard-section-heading > div:first-child {
+  min-width: 0;
+}
+
+.dashboard-section-heading .section-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 980px) {
+  .dashboard-section-heading {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .dashboard-section-heading .section-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* Primary buttons already carry strong fill. Slightly brighten their icons so
+   the artwork stays distinct without changing the existing theme colors. */
+.button.primary[data-upm-icon]::before {
+  filter: brightness(1.14) saturate(1.06);
+}
+
+@media (max-width: 767.98px) {
+  .topbar-copy {
+    min-height: 58px;
+    padding-left: 68px;
+  }
+
+  .topbar-copy::before {
+    width: 54px;
+    height: 54px;
+    border-radius: 13px;
+  }
+
+  .dashboard-tab[data-upm-icon] {
+    padding-inline: 11px;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-copy {
+    min-height: 48px;
+    padding-left: 56px;
+  }
+
+  .topbar-copy::before {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+  }
+
+  .button[data-upm-icon],
+  .dashboard-tab[data-upm-icon],
+  .project-settings-tab[data-upm-icon],
+  .runtime-settings-tab[data-upm-icon] {
+    gap: 6px;
+  }
+}
+
+@media (forced-colors: active) {
+  .button[data-upm-icon]::before,
+  .dashboard-tab[data-upm-icon]::before,
+  .project-settings-tab[data-upm-icon]::before,
+  .runtime-settings-tab[data-upm-icon]::before,
+  h2[data-upm-icon]::before,
+  h3[data-upm-icon]::before,
+  .topbar-copy::before,
+  .auth-card::before {
+    filter: none;
+  }
+}
+
+.footer-meta[data-upm-icon] {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.footer-meta[data-upm-icon]::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  background-image: var(--upm-icon-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.top-action-menu > summary.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.top-action-menu > summary.button::before {
+  content: "";
+  width: var(--upm-icon-size);
+  height: var(--upm-icon-size);
+  flex: 0 0 auto;
+  background: url("/icons/tools.png") center / contain no-repeat;
+}
+
+/* --------------------------------------------------------------------------
+   v0.10.4 interactive history charts + session-rotation UI hardening
+   Chart presentation is implemented primarily in styles.css because the same
+   renderer is shared by desktop and browser dashboard modes.
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   v0.10.3 desktop application shell and navigation action bar
+   -------------------------------------------------------------------------- */
+.dashboard-nav {
+  flex-wrap: wrap;
+}
+
+.dashboard-tabs {
+  flex: 1 1 430px;
+}
+
+.dashboard-nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.dashboard-nav-actions > .button,
+.dashboard-nav-actions > .dashboard-desktop-action > .button,
+.dashboard-action-menu > summary {
+  min-height: 36px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.dashboard-desktop-action {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.dashboard-desktop-action[hidden] {
+  display: none !important;
+}
+
+.dashboard-action-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.dashboard-action-menu > summary.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.dashboard-action-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 9px;
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(72vh, 680px);
+  overflow: auto;
+  margin-top: 0;
+  padding: 10px;
+  border-color: var(--bh-border-strong);
+  background: rgba(16, 16, 19, 0.985);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.dashboard-action-menu-panel .action-menu-group {
+  align-content: start;
+  grid-template-columns: 1fr;
+  margin: 0;
+  padding: 9px;
+  border: 1px solid rgba(84, 84, 84, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.dashboard-action-menu-panel .action-menu-label {
+  grid-column: auto;
+}
+
+.dashboard-nav-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Browser mode keeps the roomier dashboard presentation. */
+body[data-runtime-mode="browser"] .topbar {
+  min-height: 118px;
+}
+
+/* Electron mode uses a compact, edge-to-edge shell so the window reads as a
+   standalone application instead of a web page framed inside a desktop host. */
+body[data-runtime-mode="desktop"] .shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 24px;
+}
+
+body[data-runtime-mode="desktop"] .topbar {
+  min-height: 58px;
+  margin: 0;
+  padding: 8px 16px;
+  overflow: visible;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(28, 28, 33, 0.98), rgba(17, 17, 20, 0.98));
+  box-shadow: none;
+}
+
+body[data-runtime-mode="desktop"] .topbar::after {
+  display: none;
+}
+
+body[data-runtime-mode="desktop"] .topbar-copy {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  max-width: none;
+  padding-left: 54px;
+}
+
+body[data-runtime-mode="desktop"] .topbar-copy::before {
+  top: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  filter: drop-shadow(0 5px 12px rgba(var(--bh-accent-rgb), 0.2));
+}
+
+body[data-runtime-mode="desktop"] .topbar-copy .eyebrow,
+body[data-runtime-mode="desktop"] .topbar-copy .muted {
+  display: none;
+}
+
+body[data-runtime-mode="desktop"] .topbar-copy h1 {
+  margin: 0;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+
+body[data-runtime-mode="desktop"] .dashboard-nav {
+  top: 0;
+  margin: 0 0 14px;
+  padding: 7px 14px;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: rgba(18, 18, 22, 0.985);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
+}
+
+body[data-runtime-mode="desktop"] .dashboard-content,
+body[data-runtime-mode="desktop"] .site-footer {
+  margin-right: 16px;
+  margin-left: 16px;
+}
+
+body[data-runtime-mode="desktop"] .dashboard-section {
+  border-radius: 9px;
+}
+
+body[data-runtime-mode="desktop"] #desktopModeStatus {
+  font-size: 0.7rem;
+}
+
+@media (max-width: 1240px) {
+  .dashboard-tabs {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .dashboard-nav-actions {
+    order: 2;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
+
+  .dashboard-nav-meta {
+    order: 3;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-action-menu-panel {
+    grid-template-columns: repeat(2, minmax(170px, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dashboard-nav-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .dashboard-nav-actions > .button,
+  .dashboard-nav-actions > .dashboard-desktop-action > .button,
+  .dashboard-action-menu > summary {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .dashboard-desktop-action {
+    display: block;
+  }
+
+  .dashboard-action-menu {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-action-menu-panel {
+    position: static;
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-height: none;
+    margin-top: 7px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+
+  .dashboard-nav-meta {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  body[data-runtime-mode="desktop"] .dashboard-content,
+  body[data-runtime-mode="desktop"] .site-footer {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-nav-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-action-menu {
+    grid-column: auto;
+  }
+
+  .dashboard-nav-meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   v0.10.5 simplified application navigation
+   Keep section navigation + Settings together on the left. Consolidate all
+   operational actions into the More menu on the right.
+   -------------------------------------------------------------------------- */
+.dashboard-nav {
+  flex-wrap: nowrap;
+}
+
+.dashboard-nav-primary {
+  order: 1;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-nav-primary .dashboard-tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.dashboard-nav-control {
+  flex: 0 0 auto;
+}
+
+.dashboard-nav-control::after {
+  display: none !important;
+}
+
+.dashboard-nav-meta {
+  order: 2;
+}
+
+.dashboard-nav-actions {
+  order: 3;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.dashboard-nav-actions > .dashboard-action-menu {
+  margin-left: 0;
+}
+
+.dashboard-action-menu-panel {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.dashboard-action-menu-panel .button.primary {
+  justify-content: flex-start;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-nav {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-nav-primary {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .dashboard-nav-primary .dashboard-tabs {
+    flex: 1 1 auto;
+  }
+
+  .dashboard-nav-meta {
+    order: 2;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  .dashboard-nav-actions {
+    order: 3;
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dashboard-nav-primary {
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .dashboard-nav-primary .dashboard-tabs {
+    flex: 1 1 auto;
+  }
+
+  .dashboard-nav-control {
+    min-width: 104px;
+    text-align: center;
+  }
+
+  .dashboard-nav-meta {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .dashboard-nav-actions {
+    display: block;
+    width: auto;
+  }
+
+  .dashboard-action-menu > summary {
+    width: auto;
+    min-width: 96px;
+  }
+
+  .dashboard-action-menu {
+    grid-column: auto;
+  }
+
+  .dashboard-action-menu-panel {
+    position: absolute;
+    right: 0;
+    left: auto;
+    grid-template-columns: 1fr;
+    width: min(360px, calc(100vw - 20px));
+    max-height: min(74vh, 680px);
+    margin-top: 7px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-nav-primary {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-nav-primary .dashboard-tabs {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .dashboard-nav-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .dashboard-nav-meta {
+    order: 2;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
+
+  .dashboard-nav-meta .status-pill {
+    width: auto;
+  }
+
+  .dashboard-nav-actions {
+    order: 3;
+    margin-left: auto;
+  }
+}

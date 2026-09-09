@@ -1,0 +1,4461 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"
+    />
+    <title>Ultimate Project Manager</title>
+    <meta name="theme-color" content="#0b0b0f" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="256x256" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icons/upm-app-icon-256.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles-responsive.css" />
+    <link rel="stylesheet" href="/styles-cohesive.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#dashboard-projects">Skip To Dashboard</a>
+    <div id="authGate" class="auth-gate" hidden>
+      <form id="authForm" class="auth-card">
+        <p class="eyebrow">AUTHENTICATION REQUIRED</p>
+        <h1>Ultimate Project Manager</h1>
+        <p class="muted">
+          Sign in to access project operations, backups, PM2 controls, diffs, diagnostics, and File
+          Tools.
+        </p>
+        <label>Username<input id="authUsername" autocomplete="username" required /></label>
+        <label
+          >Password<input
+            id="authPassword"
+            type="password"
+            autocomplete="current-password"
+            required
+        /></label>
+        <div id="authMessage" class="auth-message muted"></div>
+        <button id="authLoginBtn" type="submit" class="button primary">Sign In</button>
+      </form>
+    </div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar-copy">
+          <p class="eyebrow">PROJECT OPERATIONS</p>
+          <h1>Ultimate Project Manager</h1>
+          <p class="muted">
+            Content-aware mirrored backups, dependency health, schedules, verification, restores,
+            project discovery, integrated File Tools, local directory browsing, PM2 process history,
+            and optional process controls.
+          </p>
+        </div>
+      </header>
+
+      <nav id="dashboardNav" class="dashboard-nav" aria-label="Dashboard navigation">
+        <div class="dashboard-nav-primary">
+          <div class="dashboard-tabs" role="tablist" aria-label="Dashboard sections">
+            <button
+              id="dashboard-tab-projects"
+              class="dashboard-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="dashboard-projects"
+              tabindex="0"
+              data-dashboard-tab="projects"
+              data-upm-icon="projects"
+            >
+              <span class="dashboard-tab-label">Projects</span>
+            </button>
+            <button
+              id="dashboard-tab-overview"
+              class="dashboard-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="dashboard-overview"
+              tabindex="-1"
+              data-dashboard-tab="overview"
+              data-upm-icon="home"
+            >
+              <span class="dashboard-tab-label">Overview</span>
+            </button>
+            <button
+              id="dashboard-tab-storage"
+              class="dashboard-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="dashboard-storage"
+              tabindex="-1"
+              data-dashboard-tab="storage"
+              data-upm-icon="backups"
+            >
+              <span class="dashboard-tab-label">Storage</span>
+            </button>
+            <button
+              id="dashboard-tab-activity"
+              class="dashboard-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="dashboard-activity"
+              tabindex="-1"
+              data-dashboard-tab="activity"
+              data-upm-icon="activity"
+            >
+              <span class="dashboard-tab-label">Activity</span>
+            </button>
+            <button
+              id="dashboard-tab-help"
+              class="dashboard-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="dashboard-help"
+              tabindex="-1"
+              data-dashboard-tab="help"
+              data-upm-icon="help-tips"
+            >
+              <span class="dashboard-tab-label">Help</span>
+            </button>
+          </div>
+          <button
+            id="settingsBtn"
+            class="dashboard-tab dashboard-nav-control"
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="settingsDialog"
+            data-upm-icon="settings"
+          >
+            <span class="dashboard-tab-label">Settings</span>
+          </button>
+        </div>
+        <div class="dashboard-nav-actions" role="toolbar" aria-label="Global project actions">
+          <details id="dashboardMoreMenu" class="action-menu dashboard-action-menu">
+            <summary class="button nav-action-button" data-upm-icon="tools">More</summary>
+            <div class="action-menu-panel dashboard-action-menu-panel">
+              <div class="action-menu-group">
+                <span class="action-menu-label">Projects</span>
+                <button
+                  id="addProjectBtn"
+                  type="button"
+                  class="button primary"
+                  data-upm-icon="projects"
+                >
+                  Add Project
+                </button>
+                <button id="backupAllBtn" type="button" class="button" data-upm-icon="backups">
+                  Backup All
+                </button>
+                <button id="discoverBtn" type="button" class="button" data-upm-icon="discover">
+                  Discover Projects
+                </button>
+              </div>
+              <div class="action-menu-group">
+                <span class="action-menu-label">Dashboard &amp; Service</span>
+                <button id="toolbarRefreshBtn" type="button" class="button" data-upm-icon="updates">
+                  Refresh Dashboard
+                </button>
+                <button id="refreshPm2Btn" type="button" class="button" data-upm-icon="pm2">
+                  Refresh PM2
+                </button>
+                <button
+                  id="verifyEverythingBtn"
+                  type="button"
+                  class="button"
+                  data-upm-icon="verify"
+                >
+                  Verify All
+                </button>
+                <button
+                  id="diagnosticsBtn"
+                  type="button"
+                  class="button"
+                  data-upm-icon="diagnostics"
+                >
+                  Diagnostics
+                </button>
+              </div>
+              <div class="action-menu-group">
+                <span class="action-menu-label">Tools &amp; Guidance</span>
+                <button id="fileToolsBtn" type="button" class="button" data-upm-icon="file-tools">
+                  File Tools
+                </button>
+                <button id="helpBtn" type="button" class="button" data-upm-icon="help-tips">
+                  Help &amp; Tips
+                </button>
+              </div>
+              <div class="action-menu-group">
+                <span class="action-menu-label">Project &amp; Support</span>
+                <a
+                  id="projectRepositoryLink"
+                  class="button"
+                  href="https://github.com/Bacon-Fixation/Ultimate-Project-Manager"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-upm-icon="repository"
+                  >Ultimate Project Manager on GitHub</a
+                >
+                <a
+                  id="kofiSupportLink"
+                  class="button"
+                  href="https://ko-fi.com/baconfixation"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-upm-icon="about"
+                  >Support on Ko-fi</a
+                >
+              </div>
+              <div id="desktopActionGroup" class="action-menu-group" hidden>
+                <span class="action-menu-label">Desktop</span>
+                <button
+                  id="openDesktopBrowserBtn"
+                  class="button"
+                  type="button"
+                  data-upm-icon="home"
+                >
+                  Browser Dashboard
+                </button>
+                <button
+                  id="openDesktopDataBtn"
+                  class="button"
+                  type="button"
+                  data-upm-icon="projects"
+                >
+                  Open Data Folder
+                </button>
+              </div>
+              <div class="action-menu-group action-menu-account">
+                <span class="action-menu-label">Account</span>
+                <button
+                  id="logoutBtn"
+                  class="button"
+                  type="button"
+                  hidden
+                  data-upm-icon="authentication"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="dashboard-nav-meta">
+          <span id="desktopModeStatus" class="status-pill" hidden>Browser Mode</span>
+          <span id="serviceStatus" class="status-pill" aria-live="polite">Connecting…</span>
+        </div>
+      </nav>
+
+      <main class="dashboard-content">
+        <section
+          id="dashboard-projects"
+          class="dashboard-section dashboard-panel"
+          data-dashboard-section="projects"
+          role="tabpanel"
+          aria-labelledby="dashboard-tab-projects"
+          tabindex="0"
+        >
+          <div class="section-heading dashboard-section-heading">
+            <div>
+              <p class="eyebrow">PROJECTS</p>
+              <h2 data-upm-icon="projects">Projects</h2>
+              <p class="muted">
+                Registered projects, live PM2 health, change state, backup actions, dependency
+                health, and source-vs-backup diffs.
+              </p>
+            </div>
+            <div class="section-actions">
+              <button id="collapseAllProjectsBtn" type="button" class="button small">
+                Collapse All
+              </button>
+              <button id="expandAllProjectsBtn" type="button" class="button small">
+                Expand All
+              </button>
+              <button id="refreshBtn" type="button" class="button" data-upm-icon="updates">
+                Refresh
+              </button>
+              <button
+                id="projectAddBtn"
+                type="button"
+                class="button primary"
+                data-upm-icon="projects"
+              >
+                Add Project
+              </button>
+            </div>
+          </div>
+          <div class="dashboard-section-body">
+            <section
+              id="gettingStartedTips"
+              class="card help-onboarding help-guidance-frame"
+              data-guidance-label="Tour / Tips"
+              aria-labelledby="gettingStartedTipsTitle"
+            >
+              <div class="help-onboarding-copy">
+                <p class="eyebrow">START HERE</p>
+                <h3 id="gettingStartedTipsTitle">New To Ultimate Project Manager?</h3>
+                <p class="muted">
+                  A safe first pass is: register a project, create and verify one backup, then add
+                  PM2, Docker gating, service health, and recovery features only where they are
+                  useful.
+                </p>
+              </div>
+              <ol class="help-onboarding-steps">
+                <li>
+                  <strong>Add Or Discover</strong
+                  ><span>Register the project root and confirm the execution host.</span>
+                </li>
+                <li>
+                  <strong>Back Up First</strong
+                  ><span>Create a verified baseline before enabling write-oriented tools.</span>
+                </li>
+                <li>
+                  <strong>Add Runtime Health</strong
+                  ><span
+                    >Match PM2 and optional supporting services after the project is stable.</span
+                  >
+                </li>
+              </ol>
+              <div class="help-onboarding-actions">
+                <button
+                  id="openHelpFromTipsBtn"
+                  class="button primary"
+                  type="button"
+                  data-upm-icon="help-tips"
+                >
+                  Open Help
+                </button>
+                <button id="dismissGettingStartedTipsBtn" class="button" type="button">
+                  Dismiss Tips
+                </button>
+              </div>
+            </section>
+            <section id="projectGrid" class="project-grid"></section>
+          </div>
+        </section>
+
+        <section
+          id="dashboard-overview"
+          class="dashboard-section dashboard-panel"
+          data-dashboard-section="overview"
+          role="tabpanel"
+          aria-labelledby="dashboard-tab-overview"
+          tabindex="0"
+          hidden
+        >
+          <div class="section-heading dashboard-section-heading overview-page-heading">
+            <div>
+              <p class="eyebrow">OVERVIEW</p>
+              <h2 data-upm-icon="home">System overview</h2>
+              <p class="muted">
+                A consolidated view of project operations, backup health, host performance, PM2,
+                monitored services, and recent diagnostics.
+              </p>
+            </div>
+            <div class="section-actions overview-page-actions">
+              <button id="collapseAllOverviewBtn" class="button small" type="button">
+                Collapse All
+              </button>
+              <button id="expandAllOverviewBtn" class="button small" type="button">
+                Expand All
+              </button>
+            </div>
+          </div>
+          <div class="dashboard-section-body overview-dashboard">
+            <section
+              class="overview-block overview-collapsible"
+              data-overview-section="operations"
+              aria-live="polite"
+            >
+              <div class="overview-block-heading overview-collapsible-heading">
+                <div>
+                  <p class="eyebrow">OPERATIONS</p>
+                  <h3>At a glance</h3>
+                  <span class="muted">Live values refresh with the dashboard.</span>
+                </div>
+                <button
+                  class="button small overview-collapse-toggle"
+                  type="button"
+                  data-overview-toggle="operations"
+                  aria-controls="overview-operations-body"
+                  aria-expanded="true"
+                >
+                  <span class="overview-collapse-label">Collapse</span
+                  ><span class="overview-collapse-chevron" aria-hidden="true"></span>
+                </button>
+              </div>
+              <div
+                id="overview-operations-body"
+                class="overview-collapsible-body"
+                data-overview-body="operations"
+              >
+                <section class="stats overview-summary" id="stats"></section>
+              </div>
+            </section>
+
+            <section
+              class="card host-overview-card overview-collapsible"
+              data-overview-section="host"
+              aria-live="polite"
+            >
+              <div class="host-overview-heading overview-collapsible-heading">
+                <div>
+                  <p class="eyebrow">HOST PERFORMANCE</p>
+                  <h3 data-upm-icon="system">PC resources &amp; history</h3>
+                  <p class="muted">
+                    Overall and per-core CPU utilization, memory, uptime, UPM process usage, and
+                    recent system trends. Hover a graph for exact sample values.
+                  </p>
+                </div>
+                <div class="overview-heading-actions">
+                  <label class="host-history-range"
+                    >History
+                    <select id="hostHistoryRange">
+                      <option value="1">1 hour</option>
+                      <option value="6">6 hours</option>
+                      <option value="24" selected>24 hours</option>
+                      <option value="72">3 days</option>
+                      <option value="168">7 days</option>
+                    </select>
+                  </label>
+                  <button
+                    class="button small overview-collapse-toggle"
+                    type="button"
+                    data-overview-toggle="host"
+                    aria-controls="overview-host-body"
+                    aria-expanded="true"
+                  >
+                    <span class="overview-collapse-label">Collapse</span
+                    ><span class="overview-collapse-chevron" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+              <div
+                id="overview-host-body"
+                class="overview-collapsible-body"
+                data-overview-body="host"
+              >
+                <div id="hostStats" class="host-stats-grid"></div>
+                <div id="hostHistorySummary" class="host-history-summary"></div>
+                <div id="hostHistoryCharts" class="host-history-charts"></div>
+                <div
+                  class="host-core-section overview-collapsible overview-collapsible-nested"
+                  data-overview-section="cores"
+                >
+                  <div class="host-core-heading overview-collapsible-heading">
+                    <div>
+                      <span class="meta-label">PER-CORE CPU</span>
+                      <h4>Logical processor history</h4>
+                      <span id="hostCoreSummary" class="muted"></span>
+                    </div>
+                    <button
+                      class="button small overview-collapse-toggle"
+                      type="button"
+                      data-overview-toggle="cores"
+                      aria-controls="overview-cores-body"
+                      aria-expanded="true"
+                    >
+                      <span class="overview-collapse-label">Collapse</span
+                      ><span class="overview-collapse-chevron" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                  <div
+                    id="overview-cores-body"
+                    class="overview-collapsible-body"
+                    data-overview-body="cores"
+                  >
+                    <div id="hostCoreCharts" class="host-core-charts"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section
+          id="dashboard-storage"
+          class="dashboard-section dashboard-panel"
+          data-dashboard-section="storage"
+          role="tabpanel"
+          aria-labelledby="dashboard-tab-storage"
+          tabindex="0"
+          hidden
+        >
+          <div class="section-heading dashboard-section-heading">
+            <div>
+              <p class="eyebrow">STORAGE</p>
+              <h2 data-upm-icon="backups">Storage</h2>
+              <p class="muted">
+                Archive usage, verification state, mirror health, and backup-disk availability.
+              </p>
+            </div>
+          </div>
+          <div class="dashboard-section-body storage-dashboard">
+            <section class="card storage-card" id="storageDetails"></section>
+
+            <section
+              class="card storage-destinations-card storage-collapsible"
+              data-storage-section="destinations"
+              aria-live="polite"
+            >
+              <div class="storage-destinations-heading storage-collapsible-heading">
+                <div>
+                  <p class="eyebrow">BACKUP DRIVES</p>
+                  <h3 data-upm-icon="mirror">Backup drives & destinations</h3>
+                  <p class="muted">
+                    Primary capacity plus optional secondary mirror drive availability for each
+                    project when the host can report it.
+                  </p>
+                </div>
+                <button
+                  class="button small storage-collapse-toggle"
+                  type="button"
+                  data-storage-toggle="destinations"
+                  aria-controls="storage-destinations-body"
+                  aria-expanded="true"
+                >
+                  <span class="storage-collapse-label">Collapse</span
+                  ><span class="storage-collapse-chevron" aria-hidden="true"></span>
+                </button>
+              </div>
+              <div
+                id="storage-destinations-body"
+                class="storage-collapsible-body"
+                data-storage-body="destinations"
+              >
+                <div id="storageBackupSummary" class="storage-backup-summary"></div>
+                <div id="storageDriveList" class="storage-drive-list"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section
+          id="dashboard-activity"
+          class="dashboard-section dashboard-panel"
+          data-dashboard-section="activity"
+          role="tabpanel"
+          aria-labelledby="dashboard-tab-activity"
+          tabindex="0"
+          hidden
+        >
+          <div class="section-heading dashboard-section-heading activity-heading">
+            <div>
+              <p class="eyebrow">EVENT HISTORY</p>
+              <h2 data-upm-icon="activity">Recent activity</h2>
+              <p class="muted">
+                Backup creation, verification, restores, configuration changes, PM2 activity, File
+                Tools runs, and errors.
+              </p>
+            </div>
+          </div>
+          <div class="dashboard-section-body">
+            <section class="card activity-card">
+              <div id="activityList" class="activity-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section
+          id="dashboard-help"
+          class="dashboard-section dashboard-panel"
+          data-dashboard-section="help"
+          role="tabpanel"
+          aria-labelledby="dashboard-tab-help"
+          tabindex="0"
+          hidden
+        >
+          <div class="section-heading dashboard-section-heading help-page-heading">
+            <div>
+              <p class="eyebrow">GUIDANCE &amp; TROUBLESHOOTING</p>
+              <h2 data-upm-icon="help-tips">Help &amp; Tips</h2>
+              <p class="muted">
+                Search the built-in guide, follow a safe first-run path, or jump directly to help
+                for backups, PM2, Docker, File Tools, recovery, LAN agents, and security.
+              </p>
+            </div>
+            <button
+              id="helpShowStartTipsBtn"
+              type="button"
+              class="button small"
+              data-upm-icon="help-tips"
+            >
+              Show Start Tips
+            </button>
+          </div>
+
+          <div class="dashboard-section-body help-dashboard">
+            <section class="card help-hero">
+              <div class="help-hero-copy">
+                <p class="eyebrow">QUICK ANSWERS</p>
+                <h3 data-upm-icon="quick-help">What Do You Need Help With?</h3>
+                <p class="muted">
+                  Search terms such as <code>backup</code>, <code>Docker</code>, <code>401</code>,
+                  <code>PM2</code>, <code>restore</code>, <code>LAN</code>, or
+                  <code>sanitizer</code>.
+                </p>
+              </div>
+              <div class="help-search-row">
+                <label class="help-search-label" for="helpSearch">Search Help</label>
+                <div class="help-search-controls">
+                  <input
+                    id="helpSearch"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Search Help And Troubleshooting..."
+                  />
+                  <button id="helpSearchClear" type="button" class="button small">
+                    Clear Search
+                  </button>
+                </div>
+              </div>
+              <div class="help-topic-nav" aria-label="Popular Help topics">
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="getting-started"
+                  data-upm-icon="home"
+                >
+                  Getting Started
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="backups"
+                  data-upm-icon="backups"
+                >
+                  Backups &amp; Restore
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="pm2-docker"
+                  data-upm-icon="docker"
+                >
+                  PM2 &amp; Docker
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="file-tools"
+                  data-upm-icon="file-tools"
+                >
+                  File Tools
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="recovery"
+                  data-upm-icon="recovery"
+                >
+                  Recovery
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="lan-security"
+                  data-upm-icon="remote-access"
+                >
+                  LAN &amp; Security
+                </button>
+                <button
+                  type="button"
+                  class="button tiny"
+                  data-help-topic-target="desktop-builds"
+                  data-upm-icon="about"
+                >
+                  Desktop Builds
+                </button>
+              </div>
+            </section>
+
+            <section class="help-quick-grid" aria-label="Common tasks">
+              <article class="card help-quick-card">
+                <p class="eyebrow">COMMON TASKS</p>
+                <h3 data-upm-icon="tools">Open The Right Tool</h3>
+                <div class="help-quick-actions">
+                  <button
+                    type="button"
+                    class="button"
+                    data-help-action="add-project"
+                    data-upm-icon="projects"
+                  >
+                    Add Project
+                  </button>
+                  <button
+                    type="button"
+                    class="button"
+                    data-help-action="discover"
+                    data-upm-icon="discover"
+                  >
+                    Discover Projects
+                  </button>
+                  <button
+                    type="button"
+                    class="button"
+                    data-help-action="file-tools"
+                    data-upm-icon="file-tools"
+                  >
+                    Open File Tools
+                  </button>
+                  <button
+                    type="button"
+                    class="button"
+                    data-help-action="settings"
+                    data-upm-icon="settings"
+                  >
+                    Open Settings
+                  </button>
+                  <button
+                    type="button"
+                    class="button"
+                    data-help-action="diagnostics"
+                    data-upm-icon="diagnostics"
+                  >
+                    Run Diagnostics
+                  </button>
+                </div>
+              </article>
+              <article
+                class="card help-quick-card help-tip-card help-guidance-frame"
+                data-guidance-label="Tip"
+              >
+                <p class="eyebrow">SAFE DEFAULT</p>
+                <h3>Back Up Before Write-Oriented Tools</h3>
+                <p>
+                  Restore, recovery, dependency updates, PM2 controls, and Text Sanitizer are easier
+                  to use confidently when a recent verified backup already exists.
+                </p>
+                <p class="muted">
+                  UPM skips unchanged backups, so creating a baseline before a risky operation does
+                  not require constantly duplicating identical archives.
+                </p>
+              </article>
+              <article
+                class="card help-quick-card help-tip-card help-guidance-frame"
+                data-guidance-label="Tip"
+              >
+                <p class="eyebrow">STATUS TIP</p>
+                <h3>Process Health Is Not Service Health</h3>
+                <p>
+                  A PM2 process can be online while Redis, MariaDB, PostgreSQL, Docker, or an HTTP
+                  dependency is unavailable. Enable project Service Health when those dependencies
+                  matter to the application.
+                </p>
+              </article>
+            </section>
+
+            <div id="helpNoResults" class="card help-no-results" hidden>
+              <strong>No Matching Help Topic</strong>
+              <span class="muted">Try a shorter term or clear the Help search.</span>
+            </div>
+
+            <section id="helpTopicList" class="help-topic-list" aria-label="Help topics">
+              <details
+                id="help-topic-getting-started"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="first run setup install add project discover baseline verify dashboard overview"
+              >
+                <summary>
+                  <span>Getting Started &amp; Dashboard Tour</span
+                  ><small>Recommended first-run order and where information lives.</small>
+                </summary>
+                <div class="help-topic-body">
+                  <ol>
+                    <li>
+                      <strong>Configure UPM itself.</strong> Use Settings for listener, storage
+                      roots, remote access, authentication, encryption, accessibility, and LAN
+                      agents.
+                    </li>
+                    <li>
+                      <strong>Add or discover a project.</strong> Confirm the project root,
+                      execution host, backup destination, and editor/repository shortcuts.
+                    </li>
+                    <li>
+                      <strong>Create one verified backup.</strong> Treat this as the baseline before
+                      enabling automation or file-changing tools.
+                    </li>
+                    <li>
+                      <strong>Add optional runtime monitoring.</strong> PM2, Docker startup gating,
+                      and supporting-service probes are independent and can be enabled per project.
+                    </li>
+                    <li>
+                      <strong>Enable recovery history if useful.</strong> The delta journal
+                      complements full backups; it does not replace them.
+                    </li>
+                  </ol>
+                  <div class="help-callout">
+                    <strong>Dashboard Map:</strong> Projects is the operational workspace, Overview
+                    is host/project health, Storage is backup capacity/mirror status, Activity is
+                    the audit trail, and Help is this guide.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-projects"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="project root execution host local remote editor repository discover settings project card actions"
+              >
+                <summary>
+                  <span>Projects &amp; Project Settings</span
+                  ><small
+                    >Local vs LAN projects, paths, schedules, editor links, and project
+                    actions.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Execution Host:</strong> Local projects use paths and tools on the UPM
+                      host. LAN projects use the selected Remote Agent for supported remote
+                      operations.
+                    </li>
+                    <li>
+                      <strong>Project Root:</strong> Point to the actual source root, normally the
+                      folder containing <code>package.json</code>.
+                    </li>
+                    <li>
+                      <strong>Editor &amp; Repository:</strong> These are convenience links only;
+                      they do not affect backup or PM2 matching.
+                    </li>
+                    <li>
+                      <strong>Discovery:</strong> Scan parent folders for Node projects when
+                      registering many local projects.
+                    </li>
+                  </ul>
+                  <div class="help-callout">
+                    <strong>Tip:</strong> If PM2 matching is unreliable because the process runs
+                    from another working directory, add explicit PM2 process names in Runtime
+                    settings.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-backups"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="backup restore retention mirror secondary usb nas verification archive tar encryption include exclude gitignore no changes skipped rotation"
+              >
+                <summary>
+                  <span>Backups, Mirrors, Verification &amp; Restore</span
+                  ><small
+                    >Retention, include/exclude rules, secondary destinations, encryption, and safe
+                    restore behavior.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Change-aware backups:</strong> A normal backup can be skipped when
+                      source content has not changed. That is expected.
+                    </li>
+                    <li>
+                      <strong>Secondary mirror:</strong> Primary commit happens first. An
+                      unavailable USB/NAS mirror can be caught up later instead of blocking the
+                      primary backup.
+                    </li>
+                    <li>
+                      <strong>Verification:</strong> Verification checks archive integrity/content
+                      metadata; use it after storage or transport problems.
+                    </li>
+                    <li>
+                      <strong>Excludes:</strong> Additional excludes use Git-style patterns. Include
+                      overrides can intentionally re-include selected ignored files.
+                    </li>
+                    <li>
+                      <strong>Encryption:</strong> Encrypted archives require the same AES-256-GCM
+                      key for recovery. Keep an offline copy of every key needed for retained
+                      archives.
+                    </li>
+                    <li>
+                      <strong>Restore:</strong> UPM verifies the archive before extraction and
+                      blocks restoring directly over the registered project root.
+                    </li>
+                  </ul>
+                  <div class="help-warning">
+                    <strong>Caution:</strong> Force-including secrets such as <code>.env</code> is
+                    supported, but encrypted backups are strongly recommended when those files
+                    contain credentials.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-pm2-docker"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="pm2 process online stopped offline errored auto start restart ecosystem docker docker desktop startup gate wait daemon docker info cpu gpu http stats logs health history"
+              >
+                <summary>
+                  <span>PM2 Monitoring, Controls &amp; Docker Startup Gate</span
+                  ><small
+                    >Matching processes, safe auto-start, logs/history, and Docker readiness.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Monitoring vs controls:</strong> Monitoring is read-oriented. PM2
+                      controls and auto-start are separate opt-in settings.
+                    </li>
+                    <li>
+                      <strong>Matching:</strong> UPM first uses PM2 cwd/script paths, then optional
+                      explicit process names.
+                    </li>
+                    <li>
+                      <strong>Auto-start:</strong> Stopped/offline/missing processes can be started
+                      automatically. Errored processes are intentionally not placed in an automatic
+                      restart loop.
+                    </li>
+                    <li>
+                      <strong>Docker gate:</strong> When enabled, UPM waits for
+                      <code>docker info</code> to succeed. Docker Desktop merely being open does not
+                      mean the daemon is ready.
+                    </li>
+                    <li>
+                      <strong>History and logs:</strong> Use Process Control, Log, and Health
+                      History on project cards to separate a current problem from a recurring one.
+                    </li>
+                  </ul>
+                  <div class="help-callout">
+                    <strong>Tip:</strong> If a project uses containers but PM2 itself does not
+                    depend on Docker, leave the Docker gate disabled for that project.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-service-health"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="service health redis mariadb mysql postgres postgresql docker http tcp timeout probe dependency down unreachable"
+              >
+                <summary>
+                  <span>Supporting Service Health</span
+                  ><small
+                    >Redis, MariaDB/MySQL, PostgreSQL, Docker, and custom HTTP/TCP probes.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <p>
+                    Service Health answers a different question from PM2: &quot;Are the dependencies
+                    this project needs reachable?&quot;
+                  </p>
+                  <ul>
+                    <li>
+                      Use the shortest practical probe interval without creating needless network
+                      noise.
+                    </li>
+                    <li>
+                      A Redis authentication-required response can still confirm that the Redis
+                      server is reachable.
+                    </li>
+                    <li>
+                      Database probes are protocol-level reachability checks; UPM does not store
+                      database passwords for these checks.
+                    </li>
+                    <li>
+                      Custom checks accept <code>Name | http | URL</code> or
+                      <code>Name | tcp | host:port</code>.
+                    </li>
+                  </ul>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-file-tools"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="file tools latest parser comments babel inventory duplicate sha sanitizer unicode ascii invisible ai symbols dry run preview backup"
+              >
+                <summary>
+                  <span>File Tools &amp; Text Sanitizer</span
+                  ><small
+                    >Copy-oriented utilities, duplicate inventory, and reviewable Unicode cleanup
+                    output.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Latest File Parser:</strong> Selects newest timestamped versions and
+                      writes clean names to an output tree.
+                    </li>
+                    <li>
+                      <strong>Comment Remover:</strong> Uses parser-aware cleanup for supported
+                      source formats while preserving the source tree.
+                    </li>
+                    <li>
+                      <strong>Inventory + Duplicates:</strong> Uses SHA-256 to inventory files and
+                      identify exact duplicates.
+                    </li>
+                    <li>
+                      <strong>Text Sanitizer:</strong> Uses the same copy-oriented output model as
+                      the other File Tools workflows; selected sanitized files are written to a
+                      separate output tree and source files stay untouched.
+                    </li>
+                    <li>
+                      <strong>Sanitizer presets:</strong> Standard is conservative; Expanded adds
+                      compatibility/fullwidth mappings; Extended/Ambiguous substitutions are higher
+                      risk and remain opt-in.
+                    </li>
+                  </ul>
+                  <div class="help-warning">
+                    <strong>Text Sanitizer:</strong> Scan and review highlighted changes, choose a
+                    separate output folder, and optionally create a verified UPM project backup
+                    before writing sanitized copies.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-recovery"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="recovery delta journal diff history patch restore deleted reconstruct feature pack export changes git blame last resort"
+              >
+                <summary>
+                  <span>Recovery, Delta Journal &amp; Change Export</span
+                  ><small
+                    >Reversible patches, project diffs, feature packs, and last-resort
+                    reconstruction.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Delta journal:</strong> Stores compressed reversible history between
+                      successful backup snapshots, with independent retention limits.
+                    </li>
+                    <li>
+                      <strong>Project Diff:</strong> Compares current project content with the
+                      selected/best available backup baseline.
+                    </li>
+                    <li>
+                      <strong>Feature Pack:</strong> Exports a shareable set of changed files and
+                      readable diffs, with an option to omit likely sensitive files.
+                    </li>
+                    <li>
+                      <strong>Recovery workspace:</strong> Combines available backup, journal, and
+                      source-history evidence. Treat suggestions as candidates to review, not
+                      guaranteed truth.
+                    </li>
+                  </ul>
+                  <div class="help-callout">
+                    <strong>Best Practice:</strong> Keep both full backups and the delta journal.
+                    They protect against different failure modes.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-dependencies"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="dependencies npm package json outdated versions prerelease lifecycle scripts update install"
+              >
+                <summary>
+                  <span>Dependency Health &amp; Updates</span
+                  ><small
+                    >Review installed/requested/latest versions before changing package
+                    metadata.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>Review the requested range and available versions before updating.</li>
+                    <li>Pre-release versions are excluded unless explicitly enabled.</li>
+                    <li>
+                      Lifecycle scripts can execute package-provided code; leave them enabled only
+                      when the project expects them.
+                    </li>
+                    <li>
+                      Create a project backup before broad dependency changes so package and
+                      lock-file changes are easy to compare or recover.
+                    </li>
+                  </ul>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-lan-security"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="lan remote agent 401 403 authentication reverse proxy trust proxy insecure http filesystem remote dashboard admin token bind 0.0.0.0 security"
+              >
+                <summary>
+                  <span>LAN Remote Agents, Remote Access &amp; Security</span
+                  ><small
+                    >Permission gates, authentication, reverse proxies, agent connectivity, and
+                    common 401/403 causes.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Remote dashboard:</strong> Controls whether non-loopback clients may
+                      reach the dashboard.
+                    </li>
+                    <li>
+                      <strong>Remote admin/filesystem:</strong> These are separate permissions and
+                      remain gated behind authentication.
+                    </li>
+                    <li>
+                      <strong>Trust Proxy:</strong> Enable only when the trusted reverse proxy
+                      itself runs on the UPM host and supplies the forwarded client information UPM
+                      expects.
+                    </li>
+                    <li>
+                      <strong>Secure cookie:</strong> Enable only when the browser actually reaches
+                      UPM through HTTPS; otherwise the browser will not return the session cookie.
+                    </li>
+                    <li>
+                      <strong>LAN Agents:</strong> A remote project must reference a
+                      configured/reachable agent before remote PM2, service, or backup operations
+                      can work.
+                    </li>
+                  </ul>
+                  <div class="help-warning">
+                    <strong>401 After Login:</strong> Check whether Secure Cookie is enabled on an
+                    HTTP URL, whether the hostname/origin changed behind a proxy, and whether the
+                    session cookie is being returned by the browser.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-settings-transfer"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="settings env import export setup transfer move update configuration secrets password session encryption key restart required"
+              >
+                <summary>
+                  <span>Runtime Settings &amp; Setup Transfer</span
+                  ><small
+                    >What the dashboard can change, what remains secret, and how to move a
+                    setup.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      The Settings dialog edits supported <code>.env</code> runtime options but does
+                      not expose stored password hashes, session secrets, encryption keys, or
+                      LAN-agent tokens.
+                    </li>
+                    <li>
+                      Setup export/import is intended for moving UPM configuration and project
+                      registrations; review warnings before applying an import.
+                    </li>
+                    <li>
+                      Some runtime changes require restarting UPM before the new listener/security
+                      behavior is active.
+                    </li>
+                    <li>Keep backup-encryption keys separately from setup exports.</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-desktop-builds"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="electron desktop browser runtime build installer executable exe size slim standard web installer nsis locale asar pm2 release packaging native menu tray authentication"
+              >
+                <summary>
+                  <span>Desktop, Browser &amp; Build Modes</span
+                  ><small
+                    >Understand runtime differences, then choose Standard, Slim, or Web Installer
+                    packaging.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ul>
+                    <li>
+                      <strong>Browser Mode:</strong> Uses the normal dashboard HTTP session and
+                      authentication rules. Native-only controls such as the tray, application menu,
+                      and desktop folder picker are not exposed.
+                    </li>
+                    <li>
+                      <strong>Desktop App:</strong> Hosts the same dashboard locally inside
+                      Electron, adds the native menu/tray and directory chooser, and authenticates
+                      the embedded renderer with a per-run desktop token that is accepted only from
+                      the local machine.
+                    </li>
+                    <li>
+                      <strong>Open In Browser:</strong> Opens a normal browser session. It
+                      intentionally returns to Browser Mode and follows the configured browser
+                      authentication and remote-access rules rather than inheriting Electron trust.
+                    </li>
+                    <li>
+                      <strong>Standard:</strong> Keeps the bundled PM2 CLI fallback and is the most
+                      self-contained Windows build.
+                    </li>
+                    <li>
+                      <strong>Slim:</strong> Keeps only the English Electron locale, omits
+                      dependency source maps, uses smart ASAR unpacking, x64-only packaging, and
+                      maximum installer compression. System/global PM2 is the fallback when the
+                      bundled CLI is unavailable.
+                    </li>
+                    <li>
+                      <strong>Web Installer:</strong> Produces the smallest setup executable because
+                      the application payload is downloaded during install. It does not make the
+                      installed Electron runtime itself tiny.
+                    </li>
+                    <li>
+                      <strong>Measure it:</strong> Run <code>npm run desktop:size</code> after
+                      building to list total output size and the largest files in each release
+                      folder.
+                    </li>
+                  </ul>
+                  <div class="help-callout">
+                    <strong>Electron Size Floor:</strong> Chromium and Node.js are part of Electron,
+                    so large reductions beyond these packaging trims would require moving to a
+                    system-WebView desktop shell rather than simply changing compression.
+                  </div>
+                </div>
+              </details>
+
+              <details
+                id="help-topic-diagnostics"
+                class="card help-topic"
+                data-help-topic-card
+                data-help-keywords="diagnostics errors warnings activity events logs troubleshooting failed backup eperm json invalid status"
+              >
+                <summary>
+                  <span>Diagnostics &amp; Troubleshooting Workflow</span
+                  ><small
+                    >A repeatable order for investigating failed backups, PM2, services, or
+                    configuration.</small
+                  >
+                </summary>
+                <div class="help-topic-body">
+                  <ol>
+                    <li>Open <strong>Diagnostics</strong> and note the exact error/code.</li>
+                    <li>
+                      Check <strong>Activity</strong> for what immediately preceded the failure.
+                    </li>
+                    <li>
+                      For PM2 problems, compare current status with
+                      <strong>Health History</strong> and logs.
+                    </li>
+                    <li>
+                      For backups, confirm the source and destination exist, have free space, and
+                      are writable; then run verification.
+                    </li>
+                    <li>
+                      For LAN projects, verify the Remote Agent first so a host-connectivity problem
+                      is not mistaken for a project failure.
+                    </li>
+                    <li>
+                      After changing settings, retry the smallest affected operation before running
+                      Backup All or other broad actions.
+                    </li>
+                  </ol>
+                  <div class="help-callout">
+                    <strong>Windows EPERM Tip:</strong> Rename/replace errors can be caused by
+                    antivirus/indexers, another process holding the file, permissions, or a
+                    temporarily unavailable destination. UPM uses hardened atomic writes where
+                    supported, but the underlying filesystem still has final authority.
+                  </div>
+                </div>
+              </details>
+            </section>
+
+            <section class="card help-footer-guide">
+              <div>
+                <p class="eyebrow">CONTEXTUAL HINTS</p>
+                <h3>
+                  Look For The
+                  <span
+                    class="help-tip help-tip-inline"
+                    tabindex="0"
+                    aria-label="Hover or focus these markers for a short explanation of a setting."
+                    data-tip="Hover or focus these markers for a short explanation of a setting."
+                    >?</span
+                  >
+                  Marker
+                </h3>
+                <p class="muted">
+                  High-impact settings now include short hover/focus explanations. The Help page
+                  carries the longer explanation so forms stay readable on desktop and mobile.
+                </p>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <a
+          class="footer-brand"
+          href="https://github.com/Bacon-Fixation/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            class="playerIcon"
+            src="https://avatars.githubusercontent.com/u/12632936?v=4"
+            alt="Bacon Fixation logo"
+            loading="lazy"
+          />
+          <span>Bacon Fixation</span>
+        </a>
+        <span class="footer-meta" data-upm-icon="about"
+          ><span id="footerProductName">Ultimate Project Manager</span>
+          <span id="footerVersion"></span
+        ></span>
+      </footer>
+    </div>
+
+    <dialog id="tasksDialog" class="wide-dialog">
+      <div class="dialog-card extra-wide tasks-dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">PROJECT TASK TRACKER</p>
+            <h2 id="tasksTitle" data-upm-icon="activity">TODO / FIX / NOTE</h2>
+            <p class="muted">
+              Keep manual work items together with TODOs, fixes, notes, and checklist items
+              discovered in the project source.
+            </p>
+          </div>
+          <button type="button" class="icon-button" data-close="tasksDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <section class="task-scan-panel">
+          <div>
+            <strong>Discover existing work items</strong>
+            <p id="taskScanStatus" class="muted">
+              Scan source comments and common TODO/task files to import existing work items.
+            </p>
+          </div>
+          <div class="task-scan-actions">
+            <label class="check-row"
+              ><input id="taskIncludeGitignored" type="checkbox" /> Include gitignored files</label
+            ><button id="scanTasksBtn" type="button" class="button" data-upm-icon="activity">
+              Scan Project
+            </button>
+          </div>
+        </section>
+
+        <div id="taskSummary" class="task-summary-grid"></div>
+
+        <form id="taskForm" class="task-editor">
+          <div class="task-editor-fields">
+            <label
+              >Type
+              <select id="taskKind">
+                <option value="todo">TODO</option>
+                <option value="fix">FIX</option>
+                <option value="note">NOTE</option>
+              </select>
+            </label>
+            <label class="task-title-input"
+              >Item
+              <input
+                id="taskTitle"
+                maxlength="1000"
+                autocomplete="off"
+                placeholder="What needs to be done?"
+              />
+            </label>
+          </div>
+          <label
+            >Details <span class="muted">(optional)</span>
+            <textarea
+              id="taskDetails"
+              rows="2"
+              maxlength="10000"
+              placeholder="Extra context, acceptance notes, links, or reminders…"
+            ></textarea>
+          </label>
+          <div class="task-editor-actions">
+            <button id="cancelTaskEditBtn" type="button" class="button" hidden>Cancel Edit</button>
+            <button id="saveTaskBtn" type="submit" class="button primary">Add Item</button>
+          </div>
+        </form>
+
+        <div class="task-toolbar">
+          <label
+            >Search<input
+              id="taskSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="Search tasks or source paths…"
+          /></label>
+          <label
+            >Status<select id="taskStatusFilter">
+              <option value="open">Open</option>
+              <option value="all">All</option>
+              <option value="completed">Completed</option>
+            </select></label
+          >
+          <label
+            >Type<select id="taskKindFilter">
+              <option value="all">All types</option>
+              <option value="todo">TODO</option>
+              <option value="fix">FIX</option>
+              <option value="note">NOTE</option>
+            </select></label
+          >
+          <span id="taskListCount" class="muted">0 shown</span>
+        </div>
+
+        <div id="taskList" class="task-list">
+          <div class="empty">No task list loaded.</div>
+        </div>
+        <div class="dialog-footer pinned-footer">
+          <span class="muted"
+            >Discovered items keep their relative file and line reference. Removed source markers
+            are never silently deleted.</span
+          >
+          <button type="button" class="button" data-close="tasksDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="journalDialog" class="wide-dialog">
+      <div class="dialog-card journal-dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">PERSISTENT CHANGE JOURNAL</p>
+            <h2 id="journalTitle" data-upm-icon="journal">Delta journal</h2>
+          </div>
+          <button type="button" class="icon-button" data-close="journalDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="recovery-warning">
+          <strong>Independent recovery history</strong>
+          <span
+            >Compressed reversible patches are retained separately from full backup archives.
+            Journal pruning follows the project&apos;s journal limits, not normal backup
+            retention.</span
+          >
+        </div>
+        <div id="journalStats" class="diff-summary-grid"></div>
+        <div class="diff-panel-heading">
+          <strong>Recent transitions</strong><span class="muted">Newest first</span>
+        </div>
+        <div id="journalEntries" class="journal-entry-list">
+          <div class="empty">No journal loaded.</div>
+        </div>
+        <div class="dialog-footer pinned-footer">
+          <span class="muted"
+            >SHA-256 verified · gzip-compressed · reversible binary-safe deltas</span
+          >
+          <button id="pruneJournalBtn" type="button" class="button" data-upm-icon="journal">
+            Apply Retention Now
+          </button>
+          <button type="button" class="button" data-close="journalDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="diffDialog" class="wide-dialog">
+      <div class="dialog-card diff-dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">PROJECT DIFF</p>
+            <h2 id="diffTitle" data-upm-icon="file-tools">Project changes</h2>
+          </div>
+          <button type="button" class="icon-button" data-close="diffDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div id="diffBaseline" class="diff-baseline muted">Loading current project state…</div>
+        <div id="diffSummary" class="diff-summary-grid"></div>
+        <div class="diff-toolbar">
+          <label
+            >Filter files<input
+              id="diffFilter"
+              type="search"
+              placeholder="Filter by path…"
+              autocomplete="off"
+          /></label>
+          <label
+            >Status<select id="diffStatusFilter">
+              <option value="all">All changes</option>
+              <option value="added">Added</option>
+              <option value="modified">Modified</option>
+              <option value="deleted">Deleted</option>
+            </select></label
+          >
+          <button id="refreshDiffBtn" class="button small" type="button" data-upm-icon="updates">
+            Refresh Diff
+          </button>
+        </div>
+        <div class="diff-layout">
+          <section class="diff-file-panel">
+            <div class="diff-panel-heading">
+              <strong>Changed files</strong><span id="diffFileCount" class="muted"></span>
+            </div>
+            <div id="diffFileList" class="diff-file-list">
+              <div class="empty">No diff loaded.</div>
+            </div>
+          </section>
+          <section class="diff-detail-panel">
+            <div id="diffDetailHeader" class="diff-detail-header">
+              <strong>Select a changed file</strong
+              ><span class="muted"
+                >Text files can be compared line-by-line against the latest backup baseline.</span
+              >
+            </div>
+            <div id="diffDetail" class="diff-detail">
+              <div class="empty">Choose a file from the list.</div>
+            </div>
+          </section>
+        </div>
+        <div class="dialog-footer pinned-footer">
+          <span class="muted"
+            >Read-only · compares the live source tree with the last successful backup
+            snapshot.</span
+          >
+          <button type="button" class="button" data-close="diffDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="featurePackDialog" class="wide-dialog">
+      <div class="dialog-card feature-pack-dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">EXPORT CHANGES</p>
+            <h2 id="featurePackTitle" data-upm-icon="feature-packs">Feature Pack</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close="featurePackDialog"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div id="featurePackBaseline" class="diff-baseline muted">Loading project changes…</div>
+        <div class="feature-pack-options">
+          <label
+            >Pack name<input
+              id="featurePackName"
+              type="text"
+              placeholder="My-Project-changes"
+              autocomplete="off"
+          /></label>
+          <div class="feature-pack-option-grid">
+            <label class="check-row"
+              ><input id="featurePackIncludeAdded" type="checkbox" checked /> Include added
+              files</label
+            >
+            <label class="check-row"
+              ><input id="featurePackIncludeModified" type="checkbox" checked /> Include modified
+              files</label
+            >
+            <label class="check-row"
+              ><input id="featurePackIncludeDeleted" type="checkbox" checked /> Include deleted-file
+              manifest</label
+            >
+            <label class="check-row"
+              ><input id="featurePackIncludeDiffs" type="checkbox" checked /> Include readable text
+              diffs</label
+            >
+            <label class="check-row"
+              ><input id="featurePackExcludeSensitive" type="checkbox" checked /> Omit likely
+              sensitive files</label
+            >
+          </div>
+        </div>
+        <div id="featurePackSummary" class="diff-summary-grid"></div>
+        <div id="featurePackWarnings" class="feature-pack-warnings"></div>
+        <div class="diff-panel-heading">
+          <strong>Pack contents</strong><span id="featurePackFileCount" class="muted"></span>
+        </div>
+        <div id="featurePackFileList" class="feature-pack-file-list">
+          <div class="empty">No feature-pack preview loaded.</div>
+        </div>
+        <div class="dialog-footer pinned-footer">
+          <span class="muted"
+            >Read-only export · SHA-256 checked while staging · likely secrets are omitted by
+            default · Feature Pack archives are not backup-encrypted.</span
+          >
+          <button
+            id="refreshFeaturePackBtn"
+            type="button"
+            class="button"
+            data-upm-icon="feature-packs"
+          >
+            Refresh Preview
+          </button>
+          <button
+            id="exportFeaturePackBtn"
+            type="button"
+            class="button primary"
+            disabled
+            data-upm-icon="export"
+          >
+            Export Feature Pack
+          </button>
+          <button type="button" class="button" data-close="featurePackDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="recoveryDialog" class="wide-dialog">
+      <div class="dialog-card recovery-dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">LAST-RESORT RECOVERY</p>
+            <h2 id="recoveryTitle" data-upm-icon="recovery">Recovery workspace</h2>
+          </div>
+          <button type="button" class="icon-button" data-close="recoveryDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="recovery-warning">
+          <strong>Evidence-only recovery</strong>
+          <span
+            >Ultimate Project Manager never writes reconstructed files back into the live project.
+            Candidates are exported under <code>data/recovery</code> for manual review.</span
+          >
+        </div>
+        <div class="recovery-toolbar">
+          <label
+            >Project-relative file
+            <input id="recoveryPath" type="text" placeholder="src/index.js" autocomplete="off" />
+          </label>
+          <button
+            id="analyzeRecoveryBtn"
+            class="button primary"
+            type="button"
+            data-upm-icon="recovery"
+          >
+            Analyze History
+          </button>
+          <button id="recoverSuggestedBtn" class="button" type="button" data-upm-icon="recovery">
+            Recover Suggested Files
+          </button>
+        </div>
+        <div id="recoverySummary" class="recovery-summary muted">
+          Choose a modified/deleted file or enter a path.
+        </div>
+        <div class="recovery-layout">
+          <section class="recovery-panel">
+            <div class="diff-panel-heading">
+              <strong>Recovery suggestions</strong
+              ><span id="recoverySuggestionCount" class="muted"></span>
+            </div>
+            <div id="recoverySuggestions" class="recovery-list">
+              <div class="empty">No recovery scan loaded.</div>
+            </div>
+          </section>
+          <section class="recovery-panel">
+            <div class="diff-panel-heading">
+              <strong>Historical candidates</strong
+              ><span id="recoveryCandidateCount" class="muted"></span>
+            </div>
+            <div id="recoveryCandidates" class="recovery-list">
+              <div class="empty">Analyze a file to find backup/journal/Git candidates.</div>
+            </div>
+          </section>
+          <section class="recovery-detail-panel">
+            <div id="recoveryCandidateHeader" class="diff-detail-header">
+              <strong>Candidate preview</strong
+              ><span class="muted"
+                >Journal candidates include replay provenance; Git candidates include blame
+                provenance when available.</span
+              >
+            </div>
+            <div id="recoveryCandidateDetail" class="recovery-detail">
+              <div class="empty">Select a candidate.</div>
+            </div>
+          </section>
+        </div>
+        <div class="dialog-footer pinned-footer">
+          <span class="muted"
+            >Verified backups are preferred; the persistent delta journal and Git objects provide
+            additional exact historical sources.</span
+          >
+          <button
+            id="exportRecoveryBtn"
+            type="button"
+            class="button primary"
+            disabled
+            data-upm-icon="export"
+          >
+            Export Selected Candidate
+          </button>
+          <button type="button" class="button" data-close="recoveryDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="projectDialog" class="project-settings-modal">
+      <form id="projectForm" method="dialog" class="dialog-card project-settings-dialog">
+        <div class="dialog-heading project-settings-heading">
+          <div>
+            <p class="eyebrow">PROJECT SETTINGS</p>
+            <h2 id="dialogTitle" data-upm-icon="projects">Add project</h2>
+            <p class="muted project-settings-heading-copy">
+              Configure project paths, backup policy, recovery, runtime monitoring, and supporting
+              service health.
+            </p>
+          </div>
+          <button type="button" class="icon-button" data-close="projectDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <nav class="project-settings-nav" aria-label="Project settings navigation">
+          <div class="project-settings-tabs" role="tablist" aria-label="Project settings sections">
+            <button
+              id="project-settings-tab-general"
+              class="project-settings-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="project-settings-general"
+              tabindex="0"
+              data-project-settings-tab="general"
+              data-upm-icon="projects"
+            >
+              General
+            </button>
+            <button
+              id="project-settings-tab-backups"
+              class="project-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="project-settings-backups"
+              tabindex="-1"
+              data-project-settings-tab="backups"
+              data-upm-icon="backups"
+            >
+              Backups
+            </button>
+            <button
+              id="project-settings-tab-recovery"
+              class="project-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="project-settings-recovery"
+              tabindex="-1"
+              data-project-settings-tab="recovery"
+              data-upm-icon="recovery"
+            >
+              Recovery
+            </button>
+            <button
+              id="project-settings-tab-runtime"
+              class="project-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="project-settings-runtime"
+              tabindex="-1"
+              data-project-settings-tab="runtime"
+              data-upm-icon="pm2"
+            >
+              Runtime
+            </button>
+            <button
+              id="project-settings-tab-services"
+              class="project-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="project-settings-services"
+              tabindex="-1"
+              data-project-settings-tab="services"
+              data-upm-icon="health"
+            >
+              Services
+            </button>
+          </div>
+        </nav>
+
+        <input type="hidden" id="projectId" />
+        <div class="project-settings-body">
+          <section
+            id="project-settings-general"
+            class="project-settings-panel is-active"
+            data-project-settings-section="general"
+            role="tabpanel"
+            aria-labelledby="project-settings-tab-general"
+            tabindex="0"
+          >
+            <div class="project-settings-section-heading">
+              <div>
+                <p class="eyebrow">GENERAL</p>
+                <h3>Project identity &amp; location</h3>
+              </div>
+              <p class="muted">
+                Choose where the project runs and how UPM should open or link to it.
+              </p>
+            </div>
+            <div class="project-settings-grid">
+              <label>Name<input id="name" required placeholder="Bacons Helper" /></label>
+              <label
+                >Execution host
+                <select id="executionHost">
+                  <option value="local">This PC (local)</option>
+                </select>
+                <span id="executionHostHint" class="hint"
+                  >Local projects use this PC&apos;s filesystem, PM2 daemon, and backup
+                  destinations.</span
+                >
+              </label>
+            </div>
+            <label
+              >Project path
+              <div class="path-picker-row">
+                <input id="projectRoot" required placeholder="C:\Projects\Bacons_Helper" />
+                <button
+                  type="button"
+                  class="button path-browse-button"
+                  data-browse-target="projectRoot"
+                >
+                  Browse
+                </button>
+              </div>
+            </label>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Project links &amp; editor</legend>
+              <div class="form-row">
+                <label
+                  >Editor
+                  <select id="projectEditor">
+                    <option value="default">Use server default</option>
+                    <option value="vscode">Visual Studio Code</option>
+                    <option value="vscode-insiders">VS Code Insiders</option>
+                    <option value="cursor">Cursor</option>
+                    <option value="windsurf">Windsurf</option>
+                    <option value="sublime">Sublime Text</option>
+                    <option value="webstorm">WebStorm</option>
+                    <option value="custom">Custom editor from .env</option>
+                  </select>
+                </label>
+                <label
+                  >Repository URL <span class="hint">optional</span>
+                  <input
+                    id="repositoryUrl"
+                    type="url"
+                    placeholder="https://github.com/Bacon-Fixation/project"
+                  />
+                </label>
+              </div>
+              <p class="hint">
+                Leave Repository URL blank to detect the project&apos;s Git <code>origin</code>. The
+                default editor comes from <code>UPM_EDITOR</code>; custom editor executables come
+                only from <code>UPM_EDITOR_COMMAND</code>.
+              </p>
+            </fieldset>
+          </section>
+
+          <section
+            id="project-settings-backups"
+            class="project-settings-panel"
+            data-project-settings-section="backups"
+            role="tabpanel"
+            aria-labelledby="project-settings-tab-backups"
+            tabindex="0"
+            hidden
+          >
+            <div class="project-settings-section-heading">
+              <div>
+                <p class="eyebrow">BACKUPS</p>
+                <h3>Backup destinations &amp; schedule</h3>
+              </div>
+              <p class="muted">
+                Control retention, mirroring, change watching, scheduling, encryption, and excludes.
+              </p>
+            </div>
+            <div class="project-settings-grid">
+              <label
+                >Primary backup path
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Leave blank to use UPM's global backup root. A project-specific path overrides only this project."
+                  data-tip="Leave blank to use UPM's global backup root. A project-specific path overrides only this project."
+                  >?</span
+                >
+                <span class="hint">optional - blank uses the manager backup folder</span>
+                <div class="path-picker-row">
+                  <input id="backupDir" placeholder="D:\Project Backups\Bacons_Helper" /><button
+                    type="button"
+                    class="button path-browse-button"
+                    data-browse-target="backupDir"
+                  >
+                    Browse
+                  </button>
+                </div>
+              </label>
+              <label
+                >Secondary backup path
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="This is a best-effort verified mirror. UPM commits the primary first and can catch the mirror up after removable or NAS storage returns."
+                  data-tip="This is a best-effort verified mirror. UPM commits the primary first and can catch the mirror up after removable or NAS storage returns."
+                  >?</span
+                >
+                <span class="hint">optional verified mirror</span>
+                <div class="path-picker-row">
+                  <input
+                    id="backupDirSecondary"
+                    placeholder="E:\Backup Mirror\Bacons_Helper"
+                  /><button
+                    type="button"
+                    class="button path-browse-button"
+                    data-browse-target="backupDirSecondary"
+                  >
+                    Browse
+                  </button>
+                </div>
+              </label>
+            </div>
+            <p class="hint">
+              The secondary destination is best-effort. The primary backup is committed first;
+              disconnected USB/NAS mirrors are backfilled when they return.
+            </p>
+            <div class="form-row">
+              <label
+                >Keep backups
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Retention limits the number of full archives kept for this project. The delta journal has its own separate retention limits."
+                  data-tip="Retention limits the number of full archives kept for this project. The delta journal has its own separate retention limits."
+                  >?</span
+                ><input id="keep" type="number" min="1" max="1000" value="10" required
+              /></label>
+              <label
+                >Change check interval (seconds)<input
+                  id="intervalSeconds"
+                  type="number"
+                  min="5"
+                  value="30"
+                  required
+              /></label>
+            </div>
+            <label class="check-row"
+              ><input id="watch" type="checkbox" checked /> Automatically watch this project for
+              content changes</label
+            >
+
+            <fieldset class="settings-group">
+              <legend>Scheduled backups</legend>
+              <label class="check-row"
+                ><input id="scheduleEnabled" type="checkbox" /> Enable an additional scheduled
+                backup check</label
+              >
+              <div class="form-row">
+                <label
+                  >Schedule type<select id="scheduleType">
+                    <option value="interval">Every N minutes</option>
+                    <option value="daily" selected>Daily</option>
+                    <option value="weekly">Selected weekdays</option>
+                  </select></label
+                >
+                <label id="scheduleIntervalWrap"
+                  >Every (minutes)<input
+                    id="scheduleEveryMinutes"
+                    type="number"
+                    min="5"
+                    max="10080"
+                    value="60"
+                /></label>
+                <label id="scheduleTimeWrap"
+                  >Time<input id="scheduleTime" type="time" value="02:00"
+                /></label>
+              </div>
+              <div id="weekdayWrap" class="weekday-wrap">
+                <span class="field-label">Weekdays</span>
+                <div class="weekday-grid">
+                  <label><input type="checkbox" name="scheduleDay" value="0" /> Sun</label>
+                  <label><input type="checkbox" name="scheduleDay" value="1" checked /> Mon</label>
+                  <label><input type="checkbox" name="scheduleDay" value="2" checked /> Tue</label>
+                  <label><input type="checkbox" name="scheduleDay" value="3" checked /> Wed</label>
+                  <label><input type="checkbox" name="scheduleDay" value="4" checked /> Thu</label>
+                  <label><input type="checkbox" name="scheduleDay" value="5" checked /> Fri</label>
+                  <label><input type="checkbox" name="scheduleDay" value="6" /> Sat</label>
+                </div>
+              </div>
+              <p class="hint">
+                Scheduled checks retain the change-detection rule; unchanged projects are skipped.
+              </p>
+            </fieldset>
+
+            <fieldset class="settings-group">
+              <legend>
+                Backup encryption
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Encryption applies to newly created archives only. Keep every key needed for older retained archives; replacing a key does not re-encrypt them."
+                  data-tip="Encryption applies to newly created archives only. Keep every key needed for older retained archives; replacing a key does not re-encrypt them."
+                  >?</span
+                >
+              </legend>
+              <label class="check-row"
+                ><input id="backupEncryptionEnabled" type="checkbox" /> Encrypt this project&apos;s
+                new backups</label
+              >
+              <p id="backupEncryptionState" class="hint">
+                Uses AES-256-GCM with the secret from <code>UPM_BACKUP_ENCRYPTION_KEY</code>.
+                Existing backups keep their original encryption state.
+              </p>
+              <p class="hint">
+                The encryption key is never stored in the project configuration. Keep a secure
+                offline copy of the key: encrypted backups cannot be restored if it is lost or
+                changed.
+              </p>
+            </fieldset>
+
+            <label
+              >Additional excludes
+              <span
+                class="help-tip"
+                tabindex="0"
+                aria-label="Use Git-style patterns to omit generated, temporary, secret, or otherwise unwanted paths in addition to normal ignore rules."
+                data-tip="Use Git-style patterns to omit generated, temporary, secret, or otherwise unwanted paths in addition to normal ignore rules."
+                >?</span
+              >
+              <span class="hint">one .gitignore-style file/folder pattern per line</span>
+              <textarea
+                id="extraExcludes"
+                rows="6"
+                placeholder=".env&#10;.env.*&#10;credentials.json&#10;logs/&#10;*.tmp"
+              ></textarea>
+            </label>
+            <label
+              >Backup include overrides
+              <span
+                class="help-tip"
+                tabindex="0"
+                aria-label="Explicit include rules can re-include selected paths even when .gitignore or Additional excludes would normally omit them. Use carefully for secrets."
+                data-tip="Explicit include rules can re-include selected paths even when .gitignore or Additional excludes would normally omit them. Use carefully for secrets."
+                >?</span
+              >
+              <span class="hint">
+                one project-relative file/folder/glob per line; re-includes matching paths even when
+                ignored by .gitignore or Additional excludes
+              </span>
+              <textarea
+                id="extraIncludes"
+                rows="6"
+                placeholder=".env.example&#10;dist/important.json&#10;config/required/&#10;generated/*.json"
+              ></textarea>
+              <span class="hint">
+                Explicitly included folders include their contents. <code>.git/</code> and UPM
+                backup destinations remain protected and cannot be force-included. Including secrets
+                such as <code>.env</code> is allowed only when explicitly listed; backup encryption
+                is strongly recommended for sensitive files.
+              </span>
+            </label>
+          </section>
+
+          <section
+            id="project-settings-recovery"
+            class="project-settings-panel"
+            data-project-settings-section="recovery"
+            role="tabpanel"
+            aria-labelledby="project-settings-tab-recovery"
+            tabindex="0"
+            hidden
+          >
+            <div class="project-settings-section-heading">
+              <div>
+                <p class="eyebrow">RECOVERY</p>
+                <h3>Persistent delta / change journal</h3>
+              </div>
+              <p class="muted">
+                Retain reversible file history independently from full backup rotation.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>
+                Delta journal
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="The delta journal keeps compressed reversible change history independently from full archive rotation. It complements backups; it is not a replacement for them."
+                  data-tip="The delta journal keeps compressed reversible change history independently from full archive rotation. It complements backups; it is not a replacement for them."
+                  >?</span
+                >
+              </legend>
+              <label class="check-row"
+                ><input id="deltaJournalEnabled" type="checkbox" checked /> Store compressed
+                reversible patches between successful backup snapshots</label
+              >
+              <div class="form-row">
+                <label
+                  >Retention (days)<input
+                    id="deltaJournalRetentionDays"
+                    type="number"
+                    min="1"
+                    max="3650"
+                    value="180"
+                /></label>
+                <label
+                  >Maximum entries<input
+                    id="deltaJournalMaxEntries"
+                    type="number"
+                    min="1"
+                    max="100000"
+                    value="1000"
+                /></label>
+              </div>
+              <div class="form-row">
+                <label
+                  >Maximum journal storage (MB)<input
+                    id="deltaJournalMaxStorageMB"
+                    type="number"
+                    min="16"
+                    max="102400"
+                    value="1024"
+                /></label>
+                <label
+                  >Maximum patched file (MB)<input
+                    id="deltaJournalMaxFileMB"
+                    type="number"
+                    min="1"
+                    max="256"
+                    value="16"
+                /></label>
+              </div>
+              <p class="hint">
+                The journal lives under <code>data/delta-journal</code> and is retained
+                independently from full backup archives. When backup encryption is enabled, new
+                journal entries are encrypted with the same AES-256-GCM key. Files above the
+                per-file ceiling are recorded as metadata-only instead of embedding large payloads.
+              </p>
+            </fieldset>
+          </section>
+
+          <section
+            id="project-settings-runtime"
+            class="project-settings-panel"
+            data-project-settings-section="runtime"
+            role="tabpanel"
+            aria-labelledby="project-settings-tab-runtime"
+            tabindex="0"
+            hidden
+          >
+            <div class="project-settings-section-heading">
+              <div>
+                <p class="eyebrow">RUNTIME</p>
+                <h3>PM2 monitoring &amp; controls</h3>
+              </div>
+              <p class="muted">
+                Match project processes, expose optional controls, and configure safe auto-start
+                behavior.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>PM2 monitoring</legend>
+              <label class="check-row"
+                ><input id="pm2Monitoring" type="checkbox" checked /> Monitor matching PM2 processes
+                for this project when PM2 is available</label
+              >
+              <label class="check-row"
+                ><input id="pm2ControlsEnabled" type="checkbox" /> Enable PM2 process controls from
+                this dashboard</label
+              >
+              <label class="check-row"
+                ><input id="pm2AutoStart" type="checkbox" /> Automatically start this project when
+                its matched PM2 processes are stopped/offline or missing
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Auto-start is opt-in. UPM starts stopped/offline matches by PM2 ID and uses the ecosystem file only when no matching process is registered. Errored processes are not restart-looped automatically."
+                  data-tip="Auto-start is opt-in. UPM starts stopped/offline matches by PM2 ID and uses the ecosystem file only when no matching process is registered. Errored processes are not restart-looped automatically."
+                  >?</span
+                ></label
+              >
+              <label class="check-row"
+                ><input id="pm2WaitForDocker" type="checkbox" /> Wait for Docker / Docker Desktop
+                daemon readiness before PM2 auto-start or manual project start
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="The gate waits for docker info to succeed. Docker Desktop being open is not enough; the daemon must answer successfully."
+                  data-tip="The gate waits for docker info to succeed. Docker Desktop being open is not enough; the daemon must answer successfully."
+                  >?</span
+                ></label
+              >
+              <div class="form-row">
+                <label
+                  >Ecosystem file <span class="hint">relative to project root</span
+                  ><input
+                    id="pm2EcosystemFile"
+                    value="ecosystem.config.js"
+                    placeholder="ecosystem.config.js"
+                /></label>
+                <label
+                  >Ecosystem app name
+                  <span class="hint">optional -- blank starts all apps in the file</span
+                  ><input id="pm2EcosystemAppName" placeholder="Bacons_Helper_JS_Discord"
+                /></label>
+              </div>
+              <label
+                >PM2 process names
+                <span class="hint"
+                  >optional - one process name per line; useful when PM2 cwd/script paths do not
+                  point inside the project</span
+                ><textarea
+                  id="pm2ProcessNames"
+                  rows="5"
+                  placeholder="Bacons_Helper_JS_Discord&#10;Bacons_Helper_Twitch"
+                ></textarea>
+              </label>
+              <p class="hint">
+                Automatic matching uses the PM2 working directory and script path first; explicit
+                names are treated as overrides. Auto-start is opt-in, starts stopped/offline matches
+                by PM2 ID, and uses the ecosystem file only when no process is registered. When the
+                Docker wait gate is enabled, UPM holds the project until the Docker daemon answers
+                <code>docker info</code>; Docker Desktop merely opening is not treated as ready.
+                Errored processes are never placed in an automatic restart loop.
+              </p>
+            </fieldset>
+          </section>
+
+          <section
+            id="project-settings-services"
+            class="project-settings-panel"
+            data-project-settings-section="services"
+            role="tabpanel"
+            aria-labelledby="project-settings-tab-services"
+            tabindex="0"
+            hidden
+          >
+            <div class="project-settings-section-heading">
+              <div>
+                <p class="eyebrow">SERVICES</p>
+                <h3>Supporting service health</h3>
+              </div>
+              <p class="muted">
+                Monitor Redis, databases, Docker, and custom HTTP/TCP dependencies independently
+                from project process state.
+              </p>
+            </div>
+            <fieldset class="settings-group service-health-settings settings-group-flat">
+              <legend>
+                Service health monitoring
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Service Health checks project dependencies separately from PM2. Use it when a process can stay online even though Redis, a database, Docker, HTTP, or TCP dependency is unavailable."
+                  data-tip="Service Health checks project dependencies separately from PM2. Use it when a process can stay online even though Redis, a database, Docker, HTTP, or TCP dependency is unavailable."
+                  >?</span
+                >
+              </legend>
+              <label class="check-row"
+                ><input id="serviceHealthEnabled" type="checkbox" /> Monitor supporting services for
+                this project</label
+              >
+              <div class="form-row">
+                <label
+                  >Check every (seconds)<input
+                    id="serviceHealthIntervalSeconds"
+                    type="number"
+                    min="10"
+                    max="3600"
+                    value="30"
+                /></label>
+                <label
+                  >Probe timeout (ms)<input
+                    id="serviceHealthTimeoutMs"
+                    type="number"
+                    min="500"
+                    max="30000"
+                    value="3000"
+                /></label>
+              </div>
+              <div class="service-health-config-grid">
+                <div class="service-health-config-card">
+                  <label class="check-row"
+                    ><input id="healthRedisEnabled" type="checkbox" /> Redis</label
+                  >
+                  <div class="form-row compact-form-row">
+                    <label>Host<input id="healthRedisHost" value="127.0.0.1" /></label
+                    ><label
+                      >Port<input
+                        id="healthRedisPort"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        value="6379"
+                    /></label>
+                  </div>
+                </div>
+                <div class="service-health-config-card">
+                  <label class="check-row"
+                    ><input id="healthMariaDbEnabled" type="checkbox" /> MariaDB / MySQL</label
+                  >
+                  <div class="form-row compact-form-row">
+                    <label>Host<input id="healthMariaDbHost" value="127.0.0.1" /></label
+                    ><label
+                      >Port<input
+                        id="healthMariaDbPort"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        value="3306"
+                    /></label>
+                  </div>
+                </div>
+                <div class="service-health-config-card">
+                  <label class="check-row"
+                    ><input id="healthPostgresEnabled" type="checkbox" /> PostgreSQL</label
+                  >
+                  <div class="form-row compact-form-row">
+                    <label>Host<input id="healthPostgresHost" value="127.0.0.1" /></label
+                    ><label
+                      >Port<input
+                        id="healthPostgresPort"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        value="5432"
+                    /></label>
+                  </div>
+                </div>
+                <div class="service-health-config-card">
+                  <label class="check-row"
+                    ><input id="healthDockerEnabled" type="checkbox" /> Docker daemon</label
+                  >
+                  <p class="hint">
+                    Uses <code>docker info</code> on the project host and reports daemon/container
+                    state.
+                  </p>
+                </div>
+              </div>
+              <label
+                >Other services
+                <span class="hint">one per line: Name | http | URL or Name | tcp | host:port</span
+                ><textarea
+                  id="serviceHealthCustomServices"
+                  rows="5"
+                  placeholder="Website | http | http://127.0.0.1:8484/health&#10;Prometheus | tcp | 127.0.0.1:9090"
+                ></textarea>
+              </label>
+              <p class="hint">
+                Health checks do not store database passwords. Redis uses PING (an
+                authentication-required response still confirms the server is reachable),
+                MariaDB/MySQL and PostgreSQL use protocol handshakes, and LAN projects run these
+                checks on their selected remote agent.
+              </p>
+            </fieldset>
+          </section>
+        </div>
+
+        <div class="dialog-actions project-settings-actions">
+          <span
+            id="projectSettingsSectionStatus"
+            class="muted project-settings-status"
+            aria-live="polite"
+            >General settings</span
+          >
+          <div class="project-settings-action-buttons">
+            <button type="button" class="button" data-close="projectDialog">Cancel</button>
+            <button type="submit" class="button primary">Save Project</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="discoverDialog">
+      <div class="dialog-card wide">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">AUTO-DISCOVERY</p>
+            <h2 data-upm-icon="discover">Find Node.js projects</h2>
+          </div>
+          <button type="button" class="icon-button" data-close="discoverDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <p class="muted">
+          Scan one or more parent folders for <code>package.json</code>. Common generated folders
+          such as <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and
+          <code>build</code> are skipped.
+        </p>
+        <label
+          >Parent folders <span class="hint">one absolute path per line</span
+          ><textarea
+            id="discoverRoots"
+            rows="5"
+            placeholder="C:\Projects&#10;D:\Development"
+          ></textarea>
+        </label>
+        <div class="inline-field-actions">
+          <button
+            type="button"
+            class="button small path-browse-button"
+            data-browse-target="discoverRoots"
+            data-browse-mode="append-lines"
+          >
+            Browse &amp; Add Folder
+          </button>
+        </div>
+        <div class="form-row compact-row">
+          <label
+            >Maximum depth<input id="discoverDepth" type="number" min="0" max="20" value="5"
+          /></label>
+          <div class="button-field">
+            <button
+              id="scanProjectsBtn"
+              type="button"
+              class="button primary"
+              data-upm-icon="discover"
+            >
+              Scan Folders
+            </button>
+          </div>
+        </div>
+        <div id="discoverySummary" class="muted"></div>
+        <div id="discoveryResults" class="discovery-list">
+          <div class="empty">Run a scan to find projects.</div>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="button" data-close="discoverDialog">Close</button>
+          <button
+            id="registerDiscoveredBtn"
+            type="button"
+            class="button primary"
+            disabled
+            data-upm-icon="projects"
+          >
+            Register Selected
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="dependenciesDialog">
+      <div class="dialog-card extra-wide dependencies-dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">DEPENDENCY HEALTH</p>
+            <h2 id="dependenciesTitle" data-upm-icon="repository">Dependencies</h2>
+          </div>
+          <div class="dialog-heading-actions">
+            <button
+              id="refreshDependenciesBtn"
+              type="button"
+              class="button small"
+              data-upm-icon="updates"
+            >
+              Check npm Registry
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              data-close="dependenciesDialog"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <p id="dependenciesStatus" class="muted">Loading package.json…</p>
+        <div id="dependencySummary" class="health-summary"></div>
+        <div class="dependency-filters">
+          <label
+            >Filter
+            <select id="dependencyFilter">
+              <option value="all">All dependencies</option>
+              <option value="outdated">Outdated</option>
+              <option value="missing">Missing/not installed</option>
+              <option value="production">Production</option>
+              <option value="development">Development</option>
+            </select>
+          </label>
+          <label>Search<input id="dependencySearch" placeholder="express" /></label>
+        </div>
+        <div class="dependency-update-options">
+          <label
+            >Save selected version as
+            <select id="dependencySaveMode">
+              <option value="preserve">Preserve current prefix</option>
+              <option value="exact">Exact - 1.2.3</option>
+              <option value="caret">Caret - ^1.2.3</option>
+              <option value="tilde">Tilde - ~1.2.3</option>
+            </select>
+          </label>
+          <label class="check-row"
+            ><input id="dependencyIncludePrerelease" type="checkbox" /> Include prerelease
+            versions</label
+          >
+          <label class="check-row"
+            ><input id="dependencyRunScripts" type="checkbox" checked /> Run npm lifecycle
+            scripts</label
+          >
+        </div>
+        <p class="muted dependency-update-help">
+          Choose a version per package. The dropdown starts with known current/wanted/latest
+          releases; select “Load all published versions…” to fetch the complete version history for
+          only that package.
+        </p>
+        <div id="dependenciesList" class="dependency-table-wrap">
+          <div class="empty">Select a project to inspect dependencies.</div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="backupsDialog">
+      <div class="dialog-card extra-wide">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">BACKUP HISTORY</p>
+            <h2 id="backupsTitle" data-upm-icon="backups">Backups</h2>
+          </div>
+          <div class="dialog-heading-actions">
+            <button id="verifyAllBtn" type="button" class="button small" data-upm-icon="verify">
+              Verify All
+            </button>
+            <button type="button" class="icon-button" data-close="backupsDialog" aria-label="Close">
+              ×
+            </button>
+          </div>
+        </div>
+        <div id="backupsList"></div>
+      </div>
+    </dialog>
+
+    <dialog id="restoreDialog">
+      <form id="restoreForm" method="dialog" class="dialog-card">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">SAFE RESTORE</p>
+            <h2 data-upm-icon="recovery">Restore backup</h2>
+          </div>
+          <button type="button" class="icon-button" data-close="restoreDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <input id="restoreProjectId" type="hidden" />
+        <input id="restoreFile" type="hidden" />
+        <p id="restoreBackupName" class="backup-name"></p>
+        <label
+          >Restore folder
+          <span class="hint"
+            >optional - blank creates a timestamped folder under the manager's restore
+            directory</span
+          >
+          <div class="path-picker-row">
+            <input id="restoreDestination" placeholder="D:\Restores\Bacons_Helper" /><button
+              type="button"
+              class="button path-browse-button"
+              data-browse-target="restoreDestination"
+            >
+              Browse
+            </button>
+          </div></label
+        >
+        <label class="check-row"
+          ><input id="restoreOverwrite" type="checkbox" /> Allow restore into a non-empty folder and
+          overwrite matching files
+          <span
+            class="help-tip"
+            tabindex="0"
+            aria-label="Leave this off for the safest restore. When enabled, matching files in the chosen non-empty restore folder may be replaced; the registered project root is still blocked."
+            data-tip="Leave this off for the safest restore. When enabled, matching files in the chosen non-empty restore folder may be replaced; the registered project root is still blocked."
+            >?</span
+          ></label
+        >
+        <p class="hint">
+          The archive is integrity-verified before extraction. Restoring directly over the
+          registered project folder is blocked.
+        </p>
+        <div class="dialog-actions">
+          <button type="button" class="button" data-close="restoreDialog">Cancel</button>
+          <button type="submit" class="button primary">Verify And Restore</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="fileToolsDialog">
+      <div class="dialog-card extra-wide file-tools-dialog">
+        <div class="dialog-heading file-tools-heading">
+          <div>
+            <p class="eyebrow">PROJECT FILE TOOLS</p>
+            <h2 id="fileToolsTitle" data-upm-icon="file-tools">File Tools</h2>
+            <p class="muted file-tools-heading-copy">
+              Build clean latest-version trees, remove comments, generate SHA-256
+              inventories/duplicate reports, and filter source files without modifying the source.
+            </p>
+          </div>
+          <div class="dialog-heading-actions">
+            <span id="fileToolsParserStatus" class="badge">Parser Status</span>
+            <button
+              id="fileToolsRefreshHistoryBtn"
+              type="button"
+              class="button small"
+              data-upm-icon="updates"
+            >
+              Refresh History
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              data-close="fileToolsDialog"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div class="file-tools-workflows" role="group" aria-label="File Tools workflow">
+          <button type="button" class="file-tools-workflow" data-file-tools-mode="latest">
+            <span class="file-tools-workflow-index">01</span>
+            <strong>Latest File Parser</strong>
+            <small>Select newest timestamped versions and write clean filenames.</small>
+          </button>
+          <button type="button" class="file-tools-workflow" data-file-tools-mode="comments">
+            <span class="file-tools-workflow-index">02</span>
+            <strong>Comment Remover</strong>
+            <small>Copy the tree while cleaning supported source comments.</small>
+          </button>
+          <button type="button" class="file-tools-workflow active" data-file-tools-mode="pipeline">
+            <span class="file-tools-workflow-index">03</span>
+            <strong>Combined Pipeline</strong>
+            <small>Select newest versions, then clean comments in one output pass.</small>
+          </button>
+          <button type="button" class="file-tools-workflow" data-file-tools-mode="inventory">
+            <span class="file-tools-workflow-index">04</span>
+            <strong>Inventory + Duplicates</strong>
+            <small
+              >Hash selected files, write an inventory manifest, and identify exact
+              duplicates.</small
+            >
+          </button>
+          <button type="button" class="file-tools-workflow" data-file-tools-mode="sanitizer">
+            <span class="file-tools-workflow-index">05</span>
+            <strong>Text Sanitizer</strong>
+            <small
+              >Find AI/rich-text Unicode, invisible characters, and safe ASCII replacements.</small
+            >
+          </button>
+        </div>
+
+        <div id="fileToolsLegacyPanel">
+          <div class="file-tools-config-grid">
+            <label
+              >Project context
+              <select id="fileToolsProject">
+                <option value="">Custom / no registered project</option>
+              </select>
+              <span class="hint"
+                >Choosing a registered project fills its project root and enables Backup before
+                processing.</span
+              >
+            </label>
+            <label
+              >Additional excludes
+              <span class="hint">Git-style file/folder patterns, comma or line separated</span>
+              <textarea
+                id="fileToolsExcludes"
+                rows="4"
+                placeholder=".env&#10;.env.*&#10;credentials.json&#10;logs/&#10;*.tmp"
+              ></textarea>
+              <span class="hint"
+                >File names, directories, globs, and negation patterns are supported. Examples:
+                <code>.env</code>, <code>credentials.json</code>, <code>logs/</code>,
+                <code>*.tmp</code>, <code>!keep.tmp</code>.</span
+              >
+            </label>
+          </div>
+
+          <div class="file-tools-config-grid file-tools-filter-grid">
+            <label
+              >Include only
+              <span class="hint"
+                >optional Git-style patterns; blank includes everything not excluded</span
+              >
+              <textarea
+                id="fileToolsIncludes"
+                rows="3"
+                placeholder="src/**&#10;*.js&#10;*.json"
+              ></textarea>
+            </label>
+            <div class="form-row">
+              <label
+                >Minimum file size (bytes)<input
+                  id="fileToolsMinBytes"
+                  type="number"
+                  min="0"
+                  value="0"
+              /></label>
+              <label
+                >Maximum file size (bytes) <span class="hint">0 = unlimited</span
+                ><input id="fileToolsMaxBytes" type="number" min="0" value="0"
+              /></label>
+            </div>
+          </div>
+
+          <div class="file-tools-paths">
+            <label
+              >Source folder
+              <div class="path-picker-row">
+                <input id="fileToolsSourceRoot" placeholder="C:\Projects\Bacons_Helper" />
+                <button
+                  type="button"
+                  class="button path-browse-button"
+                  data-browse-target="fileToolsSourceRoot"
+                >
+                  Browse
+                </button>
+              </div>
+            </label>
+            <label
+              >Output folder
+              <div class="path-picker-row">
+                <input
+                  id="fileToolsOutputRoot"
+                  placeholder="C:\Demo\Bacons_Project_Manager_JS\data\file-tools-output\..."
+                />
+                <button
+                  type="button"
+                  class="button path-browse-button"
+                  data-browse-target="fileToolsOutputRoot"
+                >
+                  Browse
+                </button>
+              </div>
+              <span class="hint"
+                >The output is always separate from the source. Project defaults are stored under
+                the manager data folder.</span
+              >
+            </label>
+          </div>
+
+          <div class="file-tools-option-grid">
+            <label class="file-tools-option check-row">
+              <input id="fileToolsRespectGitignore" type="checkbox" checked />
+              <span
+                ><strong>Respect source .gitignore</strong
+                ><small
+                  >Apply the selected source root's .gitignore to files and folders before
+                  planning.</small
+                ></span
+              >
+            </label>
+            <label class="file-tools-option check-row">
+              <input id="fileToolsUseProjectExcludes" type="checkbox" checked />
+              <span
+                ><strong>Apply registered project excludes</strong
+                ><small
+                  >When a project is selected, also use its Additional excludes patterns.</small
+                ></span
+              >
+            </label>
+            <label id="fileToolsCopyUnversionedWrap" class="file-tools-option check-row">
+              <input id="fileToolsCopyUnversioned" type="checkbox" />
+              <span
+                ><strong>Copy unversioned files</strong
+                ><small>Also carry normal files that do not contain _YYYYMMDDHHmmss.</small></span
+              >
+            </label>
+            <label id="fileToolsCopyUnsupportedWrap" class="file-tools-option check-row">
+              <input id="fileToolsCopyUnsupported" type="checkbox" checked />
+              <span
+                ><strong>Copy unsupported files unchanged</strong
+                ><small>Binary and unknown types pass through instead of disappearing.</small></span
+              >
+            </label>
+            <label id="fileToolsPreserveLinesWrap" class="file-tools-option check-row">
+              <input id="fileToolsPreserveLines" type="checkbox" checked />
+              <span
+                ><strong>Preserve line positions</strong
+                ><small
+                  >Keep removed-comment newlines where practical for easier diffs.</small
+                ></span
+              >
+            </label>
+            <label id="fileToolsPreserveLicenseWrap" class="file-tools-option check-row">
+              <input id="fileToolsPreserveLicense" type="checkbox" checked />
+              <span
+                ><strong>Preserve legal/license comments</strong
+                ><small
+                  >Keep /*! ... */, @license, @preserve, copyright, and SPDX notices.</small
+                ></span
+              >
+            </label>
+            <label id="fileToolsAggressivenessWrap" class="file-tools-option">
+              <span
+                ><strong>Comment removal aggressiveness</strong
+                ><small
+                  >JS/TS uses @babel/parser when available. Other languages use their dedicated
+                  scanners with the same preservation policy.</small
+                ></span
+              >
+              <select id="fileToolsAggressiveness">
+                <option value="safe">Safe - keep docs, notes, and tooling directives</option>
+                <option value="standard" selected>Standard - keep tooling directives</option>
+                <option value="aggressive">Aggressive - remove tooling directives too</option>
+              </select>
+            </label>
+            <label id="fileToolsMaxCommentBytesWrap" class="file-tools-option">
+              <span
+                ><strong>Max comment-clean file size</strong
+                ><small
+                  >Larger files are copied unchanged instead of being loaded into memory.</small
+                ></span
+              >
+              <select id="fileToolsMaxCommentBytes">
+                <option value="1048576">1 MB</option>
+                <option value="4194304" selected>4 MB</option>
+                <option value="8388608">8 MB</option>
+                <option value="16777216">16 MB</option>
+                <option value="33554432">32 MB</option>
+              </select>
+            </label>
+            <label class="file-tools-option check-row">
+              <input id="fileToolsOverwrite" type="checkbox" checked />
+              <span
+                ><strong>Overwrite output files</strong
+                ><small>Disable to skip destinations that already exist.</small></span
+              >
+            </label>
+            <label class="file-tools-option check-row">
+              <input id="fileToolsManifest" type="checkbox" checked />
+              <span
+                ><strong>Write JSON manifest</strong
+                ><small
+                  >Record selected versions, comment counts, results, errors, and warnings.</small
+                ></span
+              >
+            </label>
+            <label class="file-tools-option check-row">
+              <input id="fileToolsBackupFirst" type="checkbox" />
+              <span
+                ><strong>Backup before processing</strong
+                ><small
+                  >Registered projects can create a verified forced backup before the output
+                  run.</small
+                ></span
+              >
+            </label>
+            <label class="file-tools-option check-row">
+              <input id="fileToolsDryRun" type="checkbox" />
+              <span
+                ><strong>Dry run</strong
+                ><small>Run the workflow without writing transformed output files.</small></span
+              >
+            </label>
+          </div>
+
+          <div class="file-tools-safety-note">
+            <span class="badge warning">Copy-Only</span>
+            <span
+              >Source files are never renamed or rewritten. JavaScript/TypeScript uses @babel/parser
+              for syntax-aware comment ranges when available; other languages use dedicated
+              scanners. Preview the selected aggressiveness before deployment.</span
+            >
+          </div>
+
+          <section class="file-tools-preview-panel">
+            <div class="file-tools-panel-heading">
+              <div>
+                <p class="eyebrow">PREVIEW</p>
+                <h3>Planned operations</h3>
+              </div>
+              <span id="fileToolsPreviewStatus" class="badge">Not Scanned</span>
+            </div>
+            <div id="fileToolsSummary" class="health-summary file-tools-summary">
+              <div class="empty">Choose a workflow and preview the plan.</div>
+            </div>
+            <div id="fileToolsWarnings" class="file-tools-warning-list"></div>
+            <details id="fileToolsIgnoredDetails" class="file-tools-ignored-details" hidden>
+              <summary>
+                <strong>Ignored by excludes / .gitignore</strong>
+                <span id="fileToolsIgnoredCount" class="badge">0</span>
+              </summary>
+              <div id="fileToolsIgnoredList" class="file-tools-ignored-list"></div>
+            </details>
+            <details id="fileToolsDuplicateDetails" class="file-tools-ignored-details" hidden>
+              <summary>
+                <strong>Exact duplicate groups</strong>
+                <span id="fileToolsDuplicateCount" class="badge">0</span>
+              </summary>
+              <div id="fileToolsDuplicateList" class="file-tools-ignored-list"></div>
+            </details>
+            <div id="fileToolsOperations" class="file-tools-operation-list">
+              <div class="empty">No preview loaded.</div>
+            </div>
+          </section>
+
+          <section class="file-tools-history-panel">
+            <div class="file-tools-panel-heading">
+              <div>
+                <p class="eyebrow">HISTORY</p>
+                <h3>Recent File Tools runs</h3>
+              </div>
+              <button id="fileToolsClearHistoryBtn" type="button" class="button danger tiny">
+                Clear History
+              </button>
+            </div>
+            <div id="fileToolsHistory" class="file-tools-history-list">
+              <div class="empty">No File Tools history loaded.</div>
+            </div>
+          </section>
+
+          <div class="dialog-actions file-tools-dialog-actions">
+            <span id="fileToolsRunHint" class="muted"
+              >Preview first to confirm what will be written.</span
+            >
+            <button type="button" class="button" data-close="fileToolsDialog">Close</button>
+            <button
+              id="fileToolsPreviewBtn"
+              type="button"
+              class="button"
+              data-upm-icon="file-tools"
+            >
+              Preview
+            </button>
+            <button id="fileToolsRunBtn" type="button" class="button primary" data-upm-icon="tools">
+              Run Pipeline
+            </button>
+          </div>
+        </div>
+
+        <section id="textSanitizerPanel" class="text-sanitizer-panel" hidden>
+          <div class="text-sanitizer-intro">
+            <div>
+              <p class="eyebrow">UNICODE CLEANUP</p>
+              <h3 data-upm-icon="text-sanitizer">Project Text Sanitizer</h3>
+              <p class="muted">
+                Scan source files for common AI/rich-text punctuation, Unicode compatibility
+                characters, invisible controls, and other problematic characters. Review the
+                highlighted before/after diff before writing sanitized copies.
+              </p>
+            </div>
+            <span id="textSanitizerRuleCount" class="badge">Loading Rules</span>
+          </div>
+
+          <div class="text-sanitizer-source-grid">
+            <label>
+              Project context
+              <select id="textSanitizerProject">
+                <option value="">Custom / no registered project</option>
+              </select>
+              <span class="hint"
+                >LAN projects are excluded because Text Sanitizer currently scans local source files
+                only.</span
+              >
+            </label>
+            <label>
+              Source folder
+              <div class="path-picker-row">
+                <input id="textSanitizerSourceRoot" placeholder="C:\Projects\Bacons_Helper" />
+                <button
+                  type="button"
+                  class="button path-browse-button"
+                  data-browse-target="textSanitizerSourceRoot"
+                >
+                  Browse
+                </button>
+              </div>
+              <span class="hint">A registered local project automatically fills this path.</span>
+            </label>
+            <label class="text-sanitizer-output-field">
+              Output folder
+              <div class="path-picker-row">
+                <input
+                  id="textSanitizerOutputRoot"
+                  placeholder="C:\...\data\file-tools-output\...\sanitizer"
+                />
+                <button
+                  type="button"
+                  class="button path-browse-button"
+                  data-browse-target="textSanitizerOutputRoot"
+                >
+                  Browse
+                </button>
+              </div>
+              <span class="hint"
+                >Sanitized copies are written here with their source-relative paths. Source files
+                are never rewritten.</span
+              >
+            </label>
+          </div>
+
+          <div class="text-sanitizer-presets" role="group" aria-label="Text Sanitizer presets">
+            <button
+              type="button"
+              class="button small text-sanitizer-preset"
+              data-sanitizer-preset="standard"
+            >
+              Standard
+            </button>
+            <button
+              type="button"
+              class="button small text-sanitizer-preset"
+              data-sanitizer-preset="expanded"
+            >
+              Expanded
+            </button>
+            <button
+              type="button"
+              class="button small text-sanitizer-preset"
+              data-sanitizer-preset="invisible"
+            >
+              Invisible Only
+            </button>
+            <button
+              type="button"
+              class="button small text-sanitizer-preset"
+              data-sanitizer-preset="report"
+            >
+              Report Only
+            </button>
+          </div>
+
+          <div class="text-sanitizer-options">
+            <label class="file-tools-option check-row"
+              ><input id="tsReplacePunctuation" type="checkbox" checked /><span
+                ><strong>Quotes, dashes & punctuation</strong
+                ><small>Smart quotes, typographic dashes, ellipses and slash variants.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceBullets" type="checkbox" checked /><span
+                ><strong>Bullets & list markers</strong
+                ><small>Normalize decorative bullets to simple ASCII list markers.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceSpaces" type="checkbox" checked /><span
+                ><strong>Unicode spaces</strong
+                ><small>Normalize non-breaking, thin, figure and other Unicode spaces.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceLineBreaks" type="checkbox" checked /><span
+                ><strong>Unicode line breaks</strong
+                ><small>Normalize unusual line/paragraph separators to LF.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceCompatibility" type="checkbox" /><span
+                ><strong>Fullwidth & compatibility ASCII</strong
+                ><small>Expanded preset: fullwidth ASCII and small-form punctuation.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceArrowsMath" type="checkbox" checked /><span
+                ><strong>Arrows & common math</strong
+                ><small>Readable ASCII equivalents for common arrows and operators.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceStatus" type="checkbox" checked /><span
+                ><strong>Status & checkbox symbols</strong
+                ><small>Convert checkmarks, crosses and warnings to text tokens.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReplaceMisc" type="checkbox" checked /><span
+                ><strong>Miscellaneous symbols</strong
+                ><small>Copyright, trademark and related textual symbols.</small></span
+              ></label
+            >
+            <label class="file-tools-option check-row text-sanitizer-risk"
+              ><input id="tsReplaceAmbiguous" type="checkbox" /><span
+                ><strong
+                  >Extended / ambiguous substitutions
+                  <span
+                    class="help-tip"
+                    tabindex="0"
+                    aria-label="These replacements can change meaning, not just typography. Keep this off unless you reviewed the rule catalog and intend those semantic substitutions."
+                    data-tip="These replacements can change meaning, not just typography. Keep this off unless you reviewed the rule catalog and intend those semantic substitutions."
+                    >?</span
+                  ></strong
+                ><small
+                  >High-risk semantic replacements such as logical operators, fractions and
+                  superscripts.</small
+                ></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsRemoveInvisible" type="checkbox" checked /><span
+                ><strong>Remove invisible/control characters</strong
+                ><small
+                  >Zero-width, bidi controls, tags, variation selectors and related hidden
+                  characters.</small
+                ></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsReportNonAscii" type="checkbox" checked /><span
+                ><strong>Report remaining non-ASCII</strong
+                ><small
+                  >Show Unicode that is intentionally left unchanged for manual review.</small
+                ></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsUseExtensionFilter" type="checkbox" checked /><span
+                ><strong>Text extension filter</strong
+                ><small>Skip files that do not look like source/config/document text.</small></span
+              ></label
+            >
+          </div>
+
+          <div class="text-sanitizer-source-grid">
+            <label
+              >Additional ignored folders<input
+                id="tsIgnoreDirectories"
+                placeholder="generated, cache, snapshots"
+              /><span class="hint"
+                >Comma-separated folder names added to built-in ignores such as .git and
+                node_modules.</span
+              ></label
+            >
+            <label
+              >Custom text extensions<input
+                id="tsExtensions"
+                placeholder=".js, .ts, .json, .md (blank = built-in list)"
+              /><span class="hint"
+                >Optional comma-separated override for the built-in text extension list.</span
+              ></label
+            >
+          </div>
+
+          <div class="text-sanitizer-safety">
+            <label class="file-tools-option check-row"
+              ><input id="tsOverwriteOutput" type="checkbox" checked /><span
+                ><strong>Overwrite output files</strong
+                ><small
+                  >Match the other File Tools workflows: disable this to skip sanitized destinations
+                  that already exist.</small
+                ></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsWriteManifest" type="checkbox" checked /><span
+                ><strong>Write JSON manifest</strong
+                ><small
+                  >Record the source/output paths, selected files, sanitizer settings, results,
+                  stale-file refusals, and backup result.</small
+                ></span
+              ></label
+            >
+            <label class="file-tools-option check-row"
+              ><input id="tsBackupProjectFirst" type="checkbox" /><span
+                ><strong>Backup before processing</strong
+                ><small
+                  >Registered projects can create the same forced verified UPM backup used by the
+                  other File Tools workflows before output is written.</small
+                ></span
+              ></label
+            >
+          </div>
+
+          <div class="file-tools-safety-note text-sanitizer-warning">
+            <span class="badge success">Copy-Only Output</span>
+            <span
+              >Text Sanitizer now follows the other File Tools workflows: source files stay
+              untouched and selected sanitized copies are written to the output tree. Stale-file
+              SHA-256 protection still refuses output when a source changed after the scan.</span
+            >
+          </div>
+
+          <div class="text-sanitizer-actions">
+            <button
+              id="textSanitizerScanBtn"
+              type="button"
+              class="button primary"
+              data-upm-icon="text-sanitizer"
+            >
+              Scan Project
+            </button>
+            <span id="textSanitizerStatus" class="muted">No scan loaded.</span>
+          </div>
+
+          <div id="textSanitizerSummary" class="health-summary text-sanitizer-summary">
+            <div class="empty">Run a scan to find problematic characters.</div>
+          </div>
+
+          <div class="text-sanitizer-review-toolbar">
+            <input
+              id="textSanitizerSearch"
+              aria-label="Search Sanitizer Results"
+              placeholder="Search file, U+ code point, character or rule..."
+            />
+            <select id="textSanitizerStatusFilter" aria-label="Filter Sanitizer Results By Status">
+              <option value="all">All findings</option>
+              <option value="changed">Will change</option>
+              <option value="report">Report only</option>
+            </select>
+            <select
+              id="textSanitizerGroupFilter"
+              aria-label="Filter Sanitizer Results By Rule Group"
+            >
+              <option value="all">All rule groups</option>
+            </select>
+            <select id="textSanitizerSort" aria-label="Sort Sanitizer Results">
+              <option value="path">Sort: path</option>
+              <option value="changes">Sort: most changes</option>
+              <option value="unicode">Sort: remaining Unicode</option>
+            </select>
+            <button id="textSanitizerSelectVisibleBtn" type="button" class="button tiny">
+              Select Visible
+            </button>
+            <button id="textSanitizerClearSelectionBtn" type="button" class="button tiny">
+              Clear Selection
+            </button>
+            <button id="textSanitizerExportJsonBtn" type="button" class="button tiny">
+              Export JSON
+            </button>
+            <button id="textSanitizerExportCsvBtn" type="button" class="button tiny">
+              Export CSV
+            </button>
+          </div>
+
+          <div class="file-tools-table-wrap text-sanitizer-results-wrap">
+            <table class="file-tools-table text-sanitizer-results">
+              <thead>
+                <tr>
+                  <th>Apply</th>
+                  <th>File</th>
+                  <th>Status</th>
+                  <th>Changes</th>
+                  <th>Remaining Unicode</th>
+                  <th>Primary Finding</th>
+                  <th>Review</th>
+                </tr>
+              </thead>
+              <tbody id="textSanitizerResults">
+                <tr>
+                  <td colspan="7" class="muted">No scan loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="textSanitizerSelectionMeta" class="muted">0 files selected.</div>
+
+          <section id="textSanitizerPreview" class="text-sanitizer-preview" hidden>
+            <div class="file-tools-panel-heading">
+              <div>
+                <p class="eyebrow">HIGHLIGHTED PREVIEW</p>
+                <h3 id="textSanitizerPreviewTitle">File preview</h3>
+                <p id="textSanitizerPreviewMeta" class="muted"></p>
+              </div>
+              <div class="text-sanitizer-preview-nav">
+                <button id="textSanitizerPrevChange" type="button" class="button tiny">
+                  Previous
+                </button>
+                <span id="textSanitizerChangePosition" class="badge">No Changes</span>
+                <button id="textSanitizerNextChange" type="button" class="button tiny">Next</button>
+              </div>
+            </div>
+            <div id="textSanitizerChangeLocation" class="muted"></div>
+            <div class="text-sanitizer-legend">
+              <span><mark class="ts-diff-original">Original</mark> replaced/removed</span>
+              <span><mark class="ts-diff-sanitized">Sanitized</mark> replacement</span>
+              <span><code>U+xxxx</code> invisible marker</span>
+            </div>
+            <div class="text-sanitizer-diff-grid">
+              <div>
+                <strong>Original</strong>
+                <pre id="textSanitizerOriginal"></pre>
+              </div>
+              <div>
+                <strong>Sanitized</strong>
+                <pre id="textSanitizerSanitized"></pre>
+              </div>
+            </div>
+            <div id="textSanitizerChangeChips" class="text-sanitizer-chips"></div>
+          </section>
+
+          <details class="text-sanitizer-catalog-details">
+            <summary>
+              <strong>Problematic Character & Replacement Catalog</strong>
+              <span id="textSanitizerCatalogCount" class="badge">0</span>
+            </summary>
+            <div class="text-sanitizer-review-toolbar">
+              <input
+                id="textSanitizerRuleSearch"
+                aria-label="Search Sanitizer Rules"
+                placeholder="Search rule, code point or replacement..."
+              />
+              <select id="textSanitizerCatalogGroup" aria-label="Filter Sanitizer Rules By Group">
+                <option value="all">All groups</option>
+              </select>
+            </div>
+            <div class="file-tools-table-wrap text-sanitizer-catalog-wrap">
+              <table class="file-tools-table">
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Character</th>
+                    <th>Code Point</th>
+                    <th>Name</th>
+                    <th>Replacement</th>
+                    <th>Risk</th>
+                  </tr>
+                </thead>
+                <tbody id="textSanitizerCatalog"></tbody>
+              </table>
+            </div>
+            <div id="textSanitizerInvisibleCatalog" class="text-sanitizer-invisible-catalog"></div>
+          </details>
+
+          <div class="dialog-actions text-sanitizer-footer">
+            <span class="muted"
+              >Write is enabled only for files that the scan says will change. Source files remain
+              untouched.</span
+            >
+            <button type="button" class="button" data-close="fileToolsDialog">Close</button>
+            <button
+              id="textSanitizerApplyBtn"
+              type="button"
+              class="button primary"
+              disabled
+              data-upm-icon="text-sanitizer"
+            >
+              Write Selected
+            </button>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog id="directoryPickerDialog" class="directory-picker-modal">
+      <div class="dialog-card extra-wide directory-picker-dialog">
+        <div class="dialog-heading directory-picker-heading">
+          <div>
+            <p class="eyebrow">LOCAL FILESYSTEM</p>
+            <h2 id="directoryPickerTitle" data-upm-icon="projects">Choose folder</h2>
+            <p class="muted compact-copy">
+              Browse folders on the machine running Ultimate Project Manager. Files stay on that
+              machine and are never uploaded to the browser.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close="directoryPickerDialog"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="directory-browser-layout">
+          <aside class="directory-locations-panel" aria-label="Filesystem locations">
+            <div class="directory-panel-heading">
+              <div>
+                <p class="eyebrow">LOCATIONS</p>
+                <h3>Quick access</h3>
+              </div>
+              <span id="directoryPlatformLabel" class="badge">Local</span>
+            </div>
+            <p class="muted directory-panel-copy">
+              Jump to a common folder, backup location, restore location, or drive.
+            </p>
+            <div id="directoryQuickLocations" class="directory-quick-locations"></div>
+            <div class="directory-location-options">
+              <label class="check-row directory-hidden-toggle"
+                ><input id="directoryShowHidden" type="checkbox" /> Show dot-prefixed folders</label
+              >
+            </div>
+          </aside>
+
+          <section class="directory-browser-panel" aria-label="Folder browser">
+            <div class="directory-panel-heading directory-browser-heading">
+              <div>
+                <p class="eyebrow">BROWSE</p>
+                <h3>Folders</h3>
+              </div>
+              <span id="directoryBrowserSummary" class="muted">Choose a location</span>
+            </div>
+
+            <div class="directory-toolbar">
+              <div class="directory-navigation-actions" aria-label="Folder navigation">
+                <button
+                  id="directoryUpBtn"
+                  type="button"
+                  class="button small"
+                  disabled
+                  title="Go to parent folder"
+                >
+                  Up
+                </button>
+                <button
+                  id="directoryRefreshBtn"
+                  type="button"
+                  class="button small"
+                  title="Refresh this folder"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div class="directory-path-entry">
+                <label class="sr-only" for="directoryPathInput">Directory path</label>
+                <input
+                  id="directoryPathInput"
+                  aria-label="Directory path"
+                  placeholder="C:\Projects"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button id="directoryGoBtn" type="button" class="button">Go</button>
+              </div>
+              <button id="directoryNewFolderBtn" type="button" class="button small" disabled>
+                New Folder
+              </button>
+            </div>
+
+            <div class="directory-current-wrap">
+              <span class="meta-label">Current folder</span>
+              <div id="directoryCurrentPath" class="directory-current path">
+                Choose a quick location or enter an absolute path.
+              </div>
+            </div>
+
+            <div id="directoryCreatePanel" class="directory-create-panel" hidden>
+              <label for="directoryNewFolderName">New folder name</label>
+              <div class="directory-create-row">
+                <input
+                  id="directoryNewFolderName"
+                  type="text"
+                  maxlength="255"
+                  autocomplete="off"
+                  placeholder="New folder"
+                />
+                <button id="directoryCreateFolderBtn" type="button" class="button primary small">
+                  Create
+                </button>
+                <button id="directoryCancelCreateBtn" type="button" class="button small">
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <div id="directoryList" class="directory-list" aria-live="polite">
+              <div class="empty">Choose a location to begin browsing.</div>
+            </div>
+          </section>
+        </div>
+
+        <div class="dialog-footer pinned-footer directory-picker-actions">
+          <span id="directoryPickerTargetHint" class="muted"></span>
+          <button type="button" class="button" data-close="directoryPickerDialog">Cancel</button>
+          <button id="directoryUseBtn" type="button" class="button primary" disabled>
+            Use This Folder
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="pm2LogsDialog">
+      <div class="dialog-card extra-wide pm2-logs-dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">PM2 PROCESS LOGS</p>
+            <h2 id="pm2LogsTitle" data-upm-icon="pm2">PM2 logs</h2>
+            <p id="pm2LogsProjectName" class="muted compact-copy"></p>
+          </div>
+          <div class="dialog-heading-actions">
+            <label class="check-row compact-check"
+              ><input id="pm2LogsAutoRefresh" type="checkbox" /> Auto refresh · 5s</label
+            >
+            <button id="refreshPm2LogsBtn" type="button" class="button small" data-upm-icon="pm2">
+              Refresh Logs
+            </button>
+            <button type="button" class="icon-button" data-close="pm2LogsDialog" aria-label="Close">
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="pm2-logs-toolbar">
+          <label>Process<select id="pm2LogsProcess"></select></label>
+          <label
+            >Stream<select id="pm2LogsStream">
+              <option value="both">Output + Error</option>
+              <option value="stdout">Output Only</option>
+              <option value="stderr">Error Only</option>
+            </select></label
+          >
+          <label
+            >Layout<select id="pm2LogsLayout">
+              <option value="combined" selected>Combined</option>
+              <option value="split">Split</option>
+            </select></label
+          >
+          <label
+            >Tail Lines<select id="pm2LogsLines">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+              <option value="1000">1,000</option>
+              <option value="2000">2,000</option>
+            </select></label
+          >
+          <label class="pm2-log-filter"
+            >Filter Visible Lines<input
+              id="pm2LogsFilter"
+              type="search"
+              placeholder="Error, warning, command name…"
+              autocomplete="off"
+          /></label>
+          <div class="pm2-log-display-options" aria-label="Log display options">
+            <label class="check-row compact-check"
+              ><input id="pm2LogsAnsiColors" type="checkbox" checked /> Parse ANSI Colors</label
+            >
+            <label class="check-row compact-check"
+              ><input id="pm2LogsSourceColors" type="checkbox" checked /> Source Colors</label
+            >
+          </div>
+        </div>
+        <div class="pm2-logs-meta-bar">
+          <span id="pm2LogsCheckedAt" class="muted">Choose a PM2 process to read its logs.</span>
+          <span class="muted">Read-only · tails PM2-configured log files</span>
+        </div>
+        <div id="pm2LogsGrid" class="pm2-log-grid">
+          <div class="empty">No PM2 logs loaded.</div>
+        </div>
+        <div class="dialog-actions pm2-logs-footer">
+          <span class="muted"
+            >Log access is limited to PM2 paths reported for processes matched to this
+            project.</span
+          >
+          <button type="button" class="button" data-close="pm2LogsDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="pm2HistoryDialog">
+      <div class="dialog-card extra-wide pm2-history-dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">PM2 HEALTH HISTORY</p>
+            <h2 id="pm2HistoryTitle" data-upm-icon="pm2">PM2 health</h2>
+          </div>
+          <div class="dialog-heading-actions">
+            <button type="button" class="button small range-button active" data-pm2-range="24h">
+              24 Hours
+            </button>
+            <button type="button" class="button small range-button" data-pm2-range="7d">
+              7 Days
+            </button>
+            <button id="clearPm2HistoryBtn" type="button" class="button danger small">
+              Clear History
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              data-close="pm2HistoryDialog"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="pm2-history-toolbar">
+          <label>Process<select id="pm2HistoryProcess"></select></label>
+          <button id="refreshPm2HistoryBtn" type="button" class="button" data-upm-icon="pm2">
+            Refresh History
+          </button>
+        </div>
+        <div id="pm2HistorySummary" class="health-summary"></div>
+        <p id="chartInteractionHelp" class="chart-interaction-help muted">
+          Hover a graph to inspect exact values. Keyboard users can focus a graph and use Left/Right
+          Arrow, Home, or End to move between samples.
+        </p>
+        <div class="chart-grid">
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>CPU</strong><span class="muted">average + peak</span>
+            </div>
+            <canvas id="pm2CpuChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>GPU</strong><span class="muted">per-process average + peak</span>
+            </div>
+            <canvas id="pm2GpuChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>HTTP Throughput</strong><span class="muted">average + peak requests/sec</span>
+            </div>
+            <canvas id="pm2HttpRateChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>HTTP Latency</strong><span class="muted">mean + p95 when exposed by PM2</span>
+            </div>
+            <canvas id="pm2HttpLatencyChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>Memory</strong><span class="muted">average + peak</span>
+            </div>
+            <canvas id="pm2MemoryChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>Uptime</strong><span class="muted">resets expose restarts</span>
+            </div>
+            <canvas id="pm2UptimeChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel">
+            <div class="metric-heading">
+              <strong>Restart counter</strong><span class="muted">PM2 restart_time</span>
+            </div>
+            <canvas id="pm2RestartsChart" class="metric-chart"></canvas>
+          </section>
+          <section class="metric-panel chart-span">
+            <div class="metric-heading">
+              <strong>Health events</strong
+              ><span class="muted">crashes + unexpected restarts + daemon restarts</span>
+            </div>
+            <canvas id="pm2EventsChart" class="metric-chart"></canvas>
+          </section>
+        </div>
+        <section class="pm2-events-panel">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3 data-upm-icon="pm2">Detected PM2 events</h3>
+              <p class="muted">
+                Unexpected crashes/restarts are separated from dashboard-initiated actions.
+              </p>
+            </div>
+          </div>
+          <div id="pm2EventList" class="pm2-event-list"></div>
+        </section>
+        <section class="pm2-events-panel">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3 data-upm-icon="pm2">PM2 process snapshots</h3>
+              <p class="muted">
+                Recent sampled process information including PID, normalized/raw CPU, GPU, HTTP
+                telemetry, RAM, uptime, restart counters, Node/app version, execution mode, script,
+                and working directory. HTTP metrics appear when the process exposes PM2/AXM HTTP
+                telemetry; GPU metrics use available OS/vendor per-process counters.
+              </p>
+            </div>
+          </div>
+          <div id="pm2SnapshotList" class="process-history-wrap"></div>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog id="eventDetailsDialog">
+      <div class="dialog-card wide event-details-dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">EVENT DETAILS</p>
+            <h2 id="eventDetailsTitle" data-upm-icon="activity">Event details</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close="eventDetailsDialog"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div id="eventDetailsSummary" class="event-details-summary"></div>
+        <div id="eventDetailsGrid" class="event-details-grid"></div>
+        <details class="event-json-details">
+          <summary>Raw event JSON</summary>
+          <pre id="eventDetailsJson" class="event-json-output"></pre>
+        </details>
+        <div class="dialog-actions event-details-footer">
+          <span class="muted">Event/history details are read-only.</span>
+          <button id="copyEventJsonBtn" type="button" class="button" data-upm-icon="activity">
+            Copy JSON
+          </button>
+          <button type="button" class="button" data-close="eventDetailsDialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="settingsDialog" class="runtime-settings-modal">
+      <form id="settingsForm" class="dialog-card runtime-settings-dialog">
+        <div class="dialog-heading runtime-settings-heading">
+          <div>
+            <p class="eyebrow">RUNTIME CONFIGURATION</p>
+            <h2 data-upm-icon="settings">Ultimate Project Manager settings</h2>
+            <p class="muted runtime-settings-heading-copy">
+              Manage the current <code>.env</code> runtime options without exposing stored
+              passwords, session secrets, encryption keys, or LAN-agent tokens.
+            </p>
+          </div>
+          <button id="closeSettingsBtn" class="icon-button" type="button" aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <nav class="runtime-settings-nav" aria-label="Runtime settings navigation">
+          <div
+            class="runtime-settings-tabs"
+            role="tablist"
+            aria-label="Runtime configuration sections"
+          >
+            <button
+              id="runtime-settings-tab-server"
+              class="runtime-settings-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="runtime-settings-server"
+              tabindex="0"
+              data-runtime-settings-tab="server"
+              data-upm-icon="system"
+            >
+              Server
+            </button>
+            <button
+              id="runtime-settings-tab-access"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-access"
+              tabindex="-1"
+              data-runtime-settings-tab="access"
+              data-upm-icon="remote-access"
+            >
+              Access
+            </button>
+            <button
+              id="runtime-settings-tab-http"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-http"
+              tabindex="-1"
+              data-runtime-settings-tab="http"
+              data-upm-icon="remote-access"
+            >
+              HTTP
+            </button>
+            <button
+              id="runtime-settings-tab-auth"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-auth"
+              tabindex="-1"
+              data-runtime-settings-tab="auth"
+              data-upm-icon="authentication"
+            >
+              Authentication
+            </button>
+            <button
+              id="runtime-settings-tab-backups"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-backups"
+              tabindex="-1"
+              data-runtime-settings-tab="backups"
+              data-upm-icon="backups"
+            >
+              Backups
+            </button>
+            <button
+              id="runtime-settings-tab-accessibility"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-accessibility"
+              tabindex="-1"
+              data-runtime-settings-tab="accessibility"
+              data-upm-icon="quick-help"
+            >
+              Accessibility
+            </button>
+            <button
+              id="runtime-settings-tab-integrations"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-integrations"
+              tabindex="-1"
+              data-runtime-settings-tab="integrations"
+              data-upm-icon="repository"
+            >
+              Integrations
+            </button>
+            <button
+              id="runtime-settings-tab-setup"
+              class="runtime-settings-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="runtime-settings-setup"
+              tabindex="-1"
+              data-runtime-settings-tab="setup"
+              data-upm-icon="import"
+            >
+              Setup Transfer
+            </button>
+          </div>
+        </nav>
+
+        <div class="runtime-settings-body">
+          <div class="settings-restart-notice">
+            <strong>Most Runtime Changes Apply Immediately</strong>
+            <span
+              >UPM live-applies supported security, authentication, encryption, editor, and
+              LAN-agent settings. Listener, storage-root, and HTTP limit/timeout changes are saved
+              safely and prompt for a restart. Pending settings are protected by a last-known-good
+              startup fallback.</span
+            >
+          </div>
+
+          <div id="settingsWarnings" class="empty runtime-settings-warning" hidden></div>
+
+          <section
+            id="runtime-settings-server"
+            class="runtime-settings-panel is-active"
+            data-runtime-settings-section="server"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-server"
+            tabindex="0"
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">SERVER</p>
+                <h3>Listener &amp; storage roots</h3>
+              </div>
+              <p class="muted">
+                Control where UPM listens and where its default backup and restore data lives.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Server listener</legend>
+              <div class="form-grid two-column">
+                <label>Bind host<input id="settingsHost" autocomplete="off" /></label>
+                <label>Port<input id="settingsPort" type="number" min="1" max="65535" /></label>
+              </div>
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Default storage</legend>
+              <div class="form-grid two-column">
+                <label
+                  >Backup root<input
+                    id="settingsBackupRoot"
+                    autocomplete="off"
+                    placeholder="Blank = data/backups"
+                /></label>
+                <label
+                  >Restore root<input
+                    id="settingsRestoreRoot"
+                    autocomplete="off"
+                    placeholder="Blank = data/restores"
+                /></label>
+              </div>
+              <p class="hint">Project-specific backup destinations override these defaults.</p>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-access"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="access"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-access"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">ACCESS</p>
+                <h3>LAN &amp; remote permissions</h3>
+              </div>
+              <p class="muted">
+                Remote administrative and filesystem access remain gated behind dashboard
+                authentication.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>
+                Remote access
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Remote dashboard reachability, administrative writes, and filesystem/archive access are separate permission gates. Authentication still applies when enabled."
+                  data-tip="Remote dashboard reachability, administrative writes, and filesystem/archive access are separate permission gates. Authentication still applies when enabled."
+                  >?</span
+                >
+              </legend>
+              <div class="runtime-toggle-list">
+                <label class="check-row"
+                  ><input id="settingsAllowRemoteDashboard" type="checkbox" /> Allow remote
+                  dashboard access</label
+                >
+                <label class="check-row"
+                  ><input id="settingsAllowRemoteAdmin" type="checkbox" /> Allow authenticated
+                  remote administrative actions</label
+                >
+                <label class="check-row"
+                  ><input id="settingsAllowRemoteFilesystem" type="checkbox" /> Allow authenticated
+                  remote filesystem/archive access</label
+                >
+                <label class="check-row"
+                  ><input id="settingsTrustProxy" type="checkbox" /> Trust forwarded client IPs from
+                  a loopback reverse proxy
+                  <span
+                    class="help-tip"
+                    tabindex="0"
+                    aria-label="Enable only when the trusted reverse proxy runs on this UPM host. Trusting forwarded headers from arbitrary remote clients can weaken origin/IP protections."
+                    data-tip="Enable only when the trusted reverse proxy runs on this UPM host. Trusting forwarded headers from arbitrary remote clients can weaken origin/IP protections."
+                    >?</span
+                  ></label
+                >
+              </div>
+              <p class="muted">
+                Without filesystem permission, remote read-only API responses redact host paths.
+                Enable Trust Proxy only when the reverse proxy itself runs on this UPM host.
+              </p>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-http"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="http"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-http"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">HTTP</p>
+                <h3>Hardening, rate limits &amp; timeouts</h3>
+              </div>
+              <p class="muted">
+                These settings protect the dashboard API and control request lifetime behavior.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Browser security</legend>
+              <div class="runtime-toggle-list compact">
+                <label class="check-row"
+                  ><input id="settingsSecurityHeaders" type="checkbox" /> Security headers</label
+                >
+                <label class="check-row"
+                  ><input id="settingsCsp" type="checkbox" /> Content Security Policy</label
+                >
+              </div>
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Request limits</legend>
+              <div class="form-grid three-column">
+                <label>JSON limit<input id="settingsJsonLimit" autocomplete="off" /></label>
+                <label
+                  >Rate window (ms)<input
+                    id="settingsRateWindow"
+                    type="number"
+                    min="1000"
+                    max="3600000"
+                /></label>
+                <label
+                  >API requests/window<input
+                    id="settingsRateMax"
+                    type="number"
+                    min="10"
+                    max="100000"
+                /></label>
+                <label
+                  >Write requests/window<input
+                    id="settingsWriteRateMax"
+                    type="number"
+                    min="5"
+                    max="100000"
+                /></label>
+                <label
+                  >Request timeout (ms)<input
+                    id="settingsRequestTimeout"
+                    type="number"
+                    min="5000"
+                    max="3600000"
+                /></label>
+                <label
+                  >Headers timeout (ms)<input
+                    id="settingsHeadersTimeout"
+                    type="number"
+                    min="5000"
+                    max="3600000"
+                /></label>
+                <label
+                  >Keep-alive timeout (ms)<input
+                    id="settingsKeepAliveTimeout"
+                    type="number"
+                    min="1000"
+                    max="120000"
+                /></label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-auth"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="auth"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-auth"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">AUTHENTICATION</p>
+                <h3>Dashboard login &amp; sessions</h3>
+              </div>
+              <p class="muted">
+                Stored password hashes and session secrets are never returned to the browser.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>
+                Login policy
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="If Secure Cookie is enabled, the browser must reach UPM through HTTPS or it will not return the session cookie, which can look like a failed login or repeated 401 response."
+                  data-tip="If Secure Cookie is enabled, the browser must reach UPM through HTTPS or it will not return the session cookie, which can look like a failed login or repeated 401 response."
+                  >?</span
+                >
+              </legend>
+              <label class="check-row"
+                ><input id="settingsAuthEnabled" type="checkbox" /> Require dashboard
+                authentication</label
+              >
+              <div class="form-grid two-column">
+                <label>Username<input id="settingsAuthUsername" autocomplete="username" /></label>
+                <label
+                  >Session hours<input
+                    id="settingsAuthSessionHours"
+                    type="number"
+                    min="1"
+                    max="168"
+                /></label>
+                <label
+                  >Failed attempts before lockout<input
+                    id="settingsAuthMaxAttempts"
+                    type="number"
+                    min="3"
+                    max="100"
+                /></label>
+                <label
+                  >Lockout minutes<input
+                    id="settingsAuthLockoutMinutes"
+                    type="number"
+                    min="1"
+                    max="1440"
+                /></label>
+              </div>
+              <label class="check-row"
+                ><input id="settingsAuthCookieSecure" type="checkbox" /> Secure cookie (enable only
+                when HTTPS is enforced)</label
+              >
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Credentials &amp; session secret</legend>
+              <div class="settings-secret-card">
+                <div>
+                  <strong>Dashboard password</strong
+                  ><span id="settingsAuthPasswordStatus" class="badge">Not Configured</span>
+                </div>
+                <p class="muted">Leave both fields blank to preserve the current password hash.</p>
+                <div class="form-grid two-column">
+                  <label
+                    >New password<input
+                      id="settingsNewAuthPassword"
+                      type="password"
+                      autocomplete="new-password"
+                  /></label>
+                  <label
+                    >Confirm password<input
+                      id="settingsConfirmAuthPassword"
+                      type="password"
+                      autocomplete="new-password"
+                  /></label>
+                </div>
+              </div>
+              <div class="settings-secret-status">
+                <span>Session secret</span
+                ><span id="settingsSessionSecretStatus" class="badge">Not Configured</span>
+              </div>
+              <label class="check-row"
+                ><input id="settingsRotateSessionSecret" type="checkbox" /> Rotate session secret on
+                save (verified before restart; existing sessions are signed out after
+                restart)</label
+              >
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-backups"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="backups"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-backups"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">BACKUPS</p>
+                <h3 data-upm-icon="encrypt">Global backup encryption</h3>
+              </div>
+              <p class="muted">
+                This is the global key used only by projects that have backup encryption enabled.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>
+                Encryption secret
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="Changing the global encryption key affects new encrypted backups only. Older encrypted archives still require the key that created them."
+                  data-tip="Changing the global encryption key affects new encrypted backups only. Older encrypted archives still require the key that created them."
+                  >?</span
+                >
+              </legend>
+              <div class="settings-secret-card">
+                <div>
+                  <strong>Backup encryption key</strong
+                  ><span id="settingsEncryptionStatus" class="badge">Not Configured</span>
+                </div>
+                <p class="muted">
+                  Leave blank to preserve the existing key. Replacing it does not re-encrypt older
+                  archives; retain old keys for recovery.
+                </p>
+                <div class="settings-secret-row">
+                  <label
+                    >New encryption key<input
+                      id="settingsNewEncryptionKey"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="Minimum 24 characters"
+                  /></label>
+                  <button
+                    id="generateEncryptionKeyBtn"
+                    class="button small"
+                    type="button"
+                    data-upm-icon="encrypt"
+                  >
+                    Generate 256-Bit Key
+                  </button>
+                </div>
+                <p class="muted">
+                  Generation happens locally in this dashboard using the browser cryptography API.
+                  Save the settings to activate the generated key for new encrypted backups.
+                </p>
+              </div>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-accessibility"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="accessibility"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-accessibility"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">ACCESSIBILITY</p>
+                <h3>Color Vision &amp; Visual Contrast</h3>
+              </div>
+              <p class="muted">
+                These preferences are stored only in this browser and apply immediately without
+                restarting UPM.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat accessibility-settings-group">
+              <legend>Color Vision Palette</legend>
+              <div class="form-grid two-column accessibility-control-grid">
+                <label
+                  >Palette
+                  <select id="settingsColorVisionPalette">
+                    <option value="default">Default Purple</option>
+                    <option value="red-green">Red-Green Friendly</option>
+                    <option value="blue-yellow">Blue-Yellow Friendly</option>
+                    <option value="high-contrast">High Contrast</option>
+                    <option value="monochrome">Monochrome</option>
+                  </select>
+                </label>
+                <div class="accessibility-description">
+                  <strong id="settingsColorVisionName">Default Purple</strong>
+                  <span id="settingsColorVisionDescription" class="muted"
+                    >Original Bacons Helper purple with standard green, amber, and red status
+                    colors.</span
+                  >
+                </div>
+              </div>
+              <div class="accessibility-preview" aria-label="Color palette preview">
+                <span class="accessibility-accent-sample">Accent</span>
+                <span class="badge success">Healthy</span>
+                <span class="badge warning">Warning</span>
+                <span class="badge error">Error</span>
+              </div>
+              <p class="muted accessibility-help">
+                The Red-Green Friendly palette uses blue, orange, and magenta status colors.
+                Blue-Yellow Friendly shifts status colors toward green, orange, and magenta. High
+                Contrast increases separation between surfaces, text, borders, and statuses.
+                Monochrome removes most semantic color while keeping text and shape cues.
+              </p>
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat accessibility-settings-group">
+              <legend>Charts &amp; Status Cues</legend>
+              <label class="check-row"
+                ><input id="settingsChartPatterns" type="checkbox" /> Use Distinct Chart Line
+                Patterns</label
+              >
+              <p class="muted">
+                When enabled, multi-series charts use solid, dashed, and dotted lines in addition to
+                color. Status badges also use symbols and distinct border styles so state is never
+                communicated by color alone.
+              </p>
+              <button id="resetAccessibilityBtn" class="button small" type="button">
+                Reset Accessibility Colors
+              </button>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-integrations"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="integrations"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-integrations"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">INTEGRATIONS</p>
+                <h3 data-upm-icon="remote-access">Editor &amp; LAN Remote Agents</h3>
+              </div>
+              <p class="muted">
+                Configure host-side editor launching and review the remote agents currently loaded
+                by UPM.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Local editor integration</legend>
+              <div class="form-grid two-column">
+                <label
+                  >Default editor
+                  <select id="settingsEditor">
+                    <option value="vscode">VS Code</option>
+                    <option value="vscode-insiders">VS Code Insiders</option>
+                    <option value="cursor">Cursor</option>
+                    <option value="windsurf">Windsurf</option>
+                    <option value="sublime">Sublime Text</option>
+                    <option value="webstorm">WebStorm</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                <label
+                  >Custom editor command<input id="settingsEditorCommand" autocomplete="off"
+                /></label>
+              </div>
+              <p class="muted">
+                The custom command is used only when <strong>Custom</strong> is selected.
+              </p>
+            </fieldset>
+
+            <fieldset class="settings-group settings-group-flat">
+              <legend>LAN Remote Agents</legend>
+              <div class="runtime-agent-heading">
+                <div>
+                  <strong>Currently configured agents</strong
+                  ><span id="settingsLanAgentCount" class="badge">0</span>
+                </div>
+                <span class="muted">Tokens are intentionally hidden.</span>
+              </div>
+              <div id="settingsLanAgentList" class="runtime-agent-list">
+                <div class="empty">No LAN agents configured.</div>
+              </div>
+              <label class="check-row warning-option"
+                ><input id="settingsLanAllowInsecureHttp" type="checkbox" /> Allow plain HTTP for
+                non-loopback LAN agents (not recommended)</label
+              >
+              <p class="muted">
+                Keep this off to require HTTPS for other PCs. HTTP remains allowed for
+                localhost/127.0.0.1 development endpoints.
+              </p>
+              <details class="runtime-agent-editor">
+                <summary>Replace LAN agent configuration</summary>
+                <p class="muted">
+                  Enter the complete JSON array only when you want to replace
+                  <code>UPM_LAN_AGENTS_JSON</code>. Leaving this blank preserves the existing secret
+                  value.
+                </p>
+                <label
+                  >New LAN agents JSON
+                  <textarea
+                    id="settingsLanAgentsJson"
+                    rows="6"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder='[{"id":"workstation-2","name":"Workstation 2","url":"https://192.168.1.25:4311","token":"32-or-more-character-secret"}]'
+                  ></textarea>
+                </label>
+                <label class="check-row danger-option"
+                  ><input id="settingsClearLanAgents" type="checkbox" /> Remove all configured LAN
+                  agents on save</label
+                >
+              </details>
+            </fieldset>
+          </section>
+
+          <section
+            id="runtime-settings-setup"
+            class="runtime-settings-panel"
+            data-runtime-settings-section="setup"
+            role="tabpanel"
+            aria-labelledby="runtime-settings-tab-setup"
+            tabindex="0"
+            hidden
+          >
+            <div class="runtime-settings-section-heading">
+              <div>
+                <p class="eyebrow">SETUP TRANSFER</p>
+                <h3 data-upm-icon="import">Import / Export UPM Setup</h3>
+              </div>
+              <p class="muted">
+                Move project definitions and non-secret runtime settings between UPM installs or
+                keep a portable setup backup.
+              </p>
+            </div>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Export setup</legend>
+              <p class="muted">
+                Exports project paths, backup rules, schedules, PM2/service-health settings, and
+                non-secret runtime settings. Password hashes, session secrets, encryption keys, and
+                LAN agent tokens are never included.
+              </p>
+              <button id="exportSetupBtn" type="button" class="button" data-upm-icon="export">
+                Export Setup
+              </button>
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Import setup</legend>
+              <div class="form-grid two-column">
+                <label
+                  >Import mode
+                  <select id="setupImportMode">
+                    <option value="merge" selected>Merge / Update Existing</option>
+                    <option value="replace">Replace All Project Setups</option>
+                  </select>
+                </label>
+                <div class="runtime-toggle-list">
+                  <label class="check-row"
+                    ><input id="setupImportRuntimeSettings" type="checkbox" checked /> Import
+                    runtime settings</label
+                  >
+                  <label class="check-row"
+                    ><input id="setupImportProjects" type="checkbox" checked /> Import project
+                    setups</label
+                  >
+                </div>
+              </div>
+              <p class="muted">
+                Merge is recommended. Replace mode only replaces the project setup when every
+                imported project validates successfully. Existing destination secrets are preserved.
+              </p>
+              <input id="setupImportFile" type="file" accept="application/json,.json" hidden />
+              <button id="importSetupBtn" type="button" class="button" data-upm-icon="import">
+                Choose Setup File
+              </button>
+            </fieldset>
+          </section>
+        </div>
+
+        <div class="runtime-settings-actions">
+          <div class="runtime-settings-status">
+            <span id="settingsSectionStatus" class="muted">Server settings</span>
+            <span id="settingsSource" class="muted"></span>
+          </div>
+          <div class="runtime-settings-action-buttons">
+            <button type="button" class="button" id="cancelSettingsBtn">Cancel</button>
+            <button
+              id="saveSettingsBtn"
+              class="button primary"
+              type="submit"
+              data-upm-icon="settings"
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="diagnosticsDialog">
+      <div class="dialog-card extra-wide">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">DIAGNOSTICS</p>
+            <h2 data-upm-icon="diagnostics">Errors &amp; warnings</h2>
+          </div>
+          <div class="dialog-heading-actions">
+            <select id="diagnosticsLevel" aria-label="Diagnostic level">
+              <option value="">All</option>
+              <option value="error">Errors</option>
+              <option value="warning">Warnings</option>
+            </select>
+            <button
+              id="refreshDiagnosticsBtn"
+              type="button"
+              class="button small"
+              data-upm-icon="diagnostics"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              data-close="diagnosticsDialog"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div id="diagnosticsSummary" class="health-summary"></div>
+        <div id="diagnosticsList" class="diagnostics-list">
+          <div class="empty">No diagnostics loaded.</div>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
