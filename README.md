@@ -2,17 +2,13 @@
 
 Ultimate Project Manager (UPM) is a local desktop dashboard for managing, monitoring, backing up, and recovering multiple Node.js projects from one place.
 
-**v0.10.9 hardens cross-platform Electron packaging.** Linux AppImage builds are now blocked early on Windows/macOS instead of falling through to an opaque `mksquashfs ENOENT` failure. Linux artifacts can be built locally from Windows/macOS with the explicit `--docker` option, while the release workflow continues to use native Linux runners. macOS DMG/ZIP builds are also rejected on non-macOS hosts with a clear native-runner message.
+---
 
-It combines project management, backups, PM2 controls, service monitoring, recovery tools, file utilities, host telemetry, and LAN project support in a single interface.
+# Goal
 
-**v0.10.6 improves project onboarding and prepares the public GitHub community surface.** The Projects heading now includes a first-class **Add Project** action beside Refresh, the More menu includes direct links to the upcoming Ultimate Project Manager repository and Ko-fi support page, and the Electron-only application menu now includes an About dialog with version/runtime details. Repository-ready issue forms, pull-request guidance, support/security documents, and a starter GitHub Wiki set are included under `.github/` and `docs/wiki/`.
+Ultimate Project Manager is designed to make running multiple Node.js projects less fragile.
 
-**v0.10.5 streamlines the application navigation while retaining the v0.10.4 interactive chart and session-secret hardening work.** Settings now sits with the primary left-side dashboard navigation and uses the same visual treatment as the section controls. Global actions are consolidated into a grouped More menu on the right, including project actions, refresh/verification tools, File Tools, desktop-only browser/data-folder actions, guidance, and account controls.
-
-**v0.10.4 overhauls dashboard history charts and hardens authentication session-secret rotation.** Host CPU/memory/per-core history and PM2 health graphs now share one interactive canvas chart engine with proportional time spacing, clearer scales and legends, hover crosshairs, exact-value tooltips, and keyboard sample navigation. Session-secret rotation now uses shell-safe generated secrets, verifies the saved value, ignores invalid stale inherited overrides when a valid `.env` value exists, and can automatically repair an invalid desktop `.env` secret before authentication startup.
-
-The **v0.10.3 standalone Electron shell** remains in place: global actions live with the main navigation, Electron uses a compact edge-to-edge application layout, and a direct **Browser Dashboard** action opens the normal web dashboard when wanted.
+Instead of relying on only Git, only PM2, or only a normal backup folder, UPM combines multiple management and recovery layers in one dashboard so there is usually another place to look when something goes wrong.
 
 ---
 
@@ -972,13 +968,6 @@ Never assume Git contains ignored files, local configuration, secrets, or files 
 
 ---
 
-# Goal
-
-Ultimate Project Manager is designed to make running multiple Node.js projects less fragile.
-
-Instead of relying on only Git, only PM2, or only a normal backup folder, UPM combines multiple management and recovery layers in one dashboard so there is usually another place to look when something goes wrong.
-
----
 
 **Much Love,**  
 **-Bacon**
