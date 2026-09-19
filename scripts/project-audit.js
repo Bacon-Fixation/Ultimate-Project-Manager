@@ -174,6 +174,10 @@ requireAudit(
   "Legacy root .bat launchers are still present.",
 );
 requireAudit(
+  fs.existsSync(path.join(ROOT, ".env.example")),
+  "Runtime configuration template is missing.",
+);
+requireAudit(
   fs.existsSync(path.join(ROOT, ".env.agent.example")),
   "LAN Agent configuration template is missing.",
 );
