@@ -2,11 +2,13 @@
 
 const path = require("path");
 const { atomicWriteJson, readJsonRecoverable } = require("../src/filesystem/atomic-file");
+const { sanitizeRemoteConnections } = require("./remote-connections");
 
 const DEFAULTS = Object.freeze({
   closeToTray: true,
   launchAtLogin: false,
   notifications: true,
+  remoteConnections: [],
 });
 
 function sanitizeSettings(value = {}) {
@@ -14,6 +16,7 @@ function sanitizeSettings(value = {}) {
     closeToTray: value.closeToTray !== false,
     launchAtLogin: value.launchAtLogin === true,
     notifications: value.notifications !== false,
+    remoteConnections: sanitizeRemoteConnections(value.remoteConnections),
   };
 }
 
@@ -37,16 +40,20 @@ class DesktopSettingsStore {
   }
 
   get() {
-    return { ...this.settings };
+    return {
+      ...this.settings,
+      remoteConnections: this.settings.remoteConnections.map((connection) => ({ ...connection })),
+    };
   }
 
   async update(patch = {}) {
-    this.settings = sanitizeSettings({ ...this.settings, ...patch });
-    await atomicWriteJson(this.filePath, this.settings, {
+    const nextSettings = sanitizeSettings({ ...this.settings, ...patch });
+    await atomicWriteJson(this.filePath, nextSettings, {
       backup: true,
       mode: 0o600,
       validator: validSettings,
     });
+    this.settings = nextSettings;
     return this.get();
   }
 }

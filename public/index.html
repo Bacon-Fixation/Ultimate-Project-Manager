@@ -226,6 +226,23 @@
                 >
                   Open Data Folder
                 </button>
+                <button
+                  id="openRemoteUpmBtn"
+                  class="button"
+                  type="button"
+                  data-upm-icon="remote-access"
+                >
+                  Remote UPM Connections
+                </button>
+                <button
+                  id="restartElevatedBtn"
+                  class="button"
+                  type="button"
+                  data-upm-icon="authentication"
+                  hidden
+                >
+                  Restart Elevated
+                </button>
               </div>
               <div class="action-menu-group action-menu-account">
                 <span class="action-menu-label">Account</span>
@@ -890,12 +907,12 @@
                 id="help-topic-pm2-docker"
                 class="card help-topic"
                 data-help-topic-card
-                data-help-keywords="pm2 process online stopped offline errored auto start restart ecosystem docker docker desktop startup gate wait daemon docker info cpu gpu http stats logs health history"
+                data-help-keywords="pm2 process online stopped offline errored auto start restart ecosystem docker docker desktop startup gate container health healthy wait daemon docker info administrator admin root elevated elevation cpu gpu http stats logs health history"
               >
                 <summary>
-                  <span>PM2 Monitoring, Controls &amp; Docker Startup Gate</span
+                  <span>PM2 Monitoring, Controls &amp; Startup Gates</span
                   ><small
-                    >Matching processes, safe auto-start, logs/history, and Docker readiness.</small
+                    >Matching processes, safe auto-start, container readiness, and elevation.</small
                   >
                 </summary>
                 <div class="help-topic-body">
@@ -919,13 +936,28 @@
                       mean the daemon is ready.
                     </li>
                     <li>
+                      <strong>Container dependencies:</strong> Add container names/IDs that must be
+                      ready before project startup. A container with a Docker healthcheck must be
+                      <code>healthy</code>; a container without one must be running. Manual project
+                      starts are queued until the gate succeeds or its timeout expires.
+                    </li>
+                    <li>
+                      <strong>Administrator/root requirement:</strong> A project can refuse to
+                      start unless UPM is already elevated. UPM never stores an elevation password
+                      or suppresses the operating-system prompt. Start the elevated UPM session
+                      before its PM2 daemon is created so PM2 and child processes inherit the same
+                      privilege context.
+                    </li>
+                    <li>
                       <strong>History and logs:</strong> Use Process Control, Log, and Health
                       History on project cards to separate a current problem from a recurring one.
                     </li>
                   </ul>
                   <div class="help-callout">
-                    <strong>Tip:</strong> If a project uses containers but PM2 itself does not
-                    depend on Docker, leave the Docker gate disabled for that project.
+                    <strong>Tip:</strong> Named container dependencies automatically require the
+                    Docker daemon even if the general Docker gate is off. On Linux, UPM does not
+                    relaunch its Electron desktop as root; use an explicitly elevated server/CLI
+                    session only for projects that truly require root.
                   </div>
                 </div>
               </details>
@@ -1209,9 +1241,9 @@
                       installed Electron runtime itself tiny.
                     </li>
                     <li>
-                      <strong>Measure it:</strong> Run <code>npm run desktop:size</code> after
-                      building to list total output size and the largest files in each release
-                      folder.
+                      <strong>Measure it:</strong> Run
+                      <code>npm run desktop:size</code> after building to list total output
+                      size and the largest files in each release folder.
                     </li>
                   </ul>
                   <div class="help-callout">
@@ -2193,6 +2225,45 @@
                   >?</span
                 ></label
               >
+              <label class="check-row"
+                ><input id="pm2RequireElevation" type="checkbox" /> Require an Administrator/root
+                UPM session before this project may start
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  aria-label="UPM never stores an administrator or root password. If enabled, starts are held until UPM itself is running elevated. Start UPM elevated before its PM2 daemon is created so the daemon and child processes inherit that privilege level."
+                  data-tip="UPM never stores an administrator or root password. If enabled, starts are held until UPM itself is running elevated. Start UPM elevated before its PM2 daemon is created so the daemon and child processes inherit that privilege level."
+                  >?</span
+                ></label
+              >
+              <div class="form-row">
+                <label
+                  >Required Docker containers
+                  <span class="hint">optional - one container name or ID per line</span
+                  ><textarea
+                    id="pm2RequiredContainers"
+                    rows="4"
+                    placeholder="mariadb&#10;redis&#10;my-api"
+                  ></textarea
+                ></label>
+                <label
+                  >Startup gate timeout (seconds)
+                  <span class="hint">15-3600; queued manual starts expire after this time</span
+                  ><input
+                    id="pm2StartupGateTimeoutSeconds"
+                    type="number"
+                    min="15"
+                    max="3600"
+                    value="300"
+                  />
+                </label>
+              </div>
+              <p class="hint">
+                Named container dependencies imply Docker readiness even when the general Docker
+                gate is off. Containers with a Docker healthcheck must become
+                <code>healthy</code>; containers without one only need to be running. A manual
+                Start In PM2 request is queued while these gates are waiting.
+              </p>
               <div class="form-row">
                 <label
                   >Ecosystem file <span class="hint">relative to project root</span
@@ -2225,6 +2296,33 @@
                 Docker wait gate is enabled, UPM holds the project until the Docker daemon answers
                 <code>docker info</code>; Docker Desktop merely opening is not treated as ready.
                 Errored processes are never placed in an automatic restart loop.
+              </p>
+            </fieldset>
+            <fieldset class="settings-group settings-group-flat">
+              <legend>Runnable backup builds</legend>
+              <p class="hint">
+                Prepared backup builds run from UPM&apos;s isolated runtime cache. The backup archive
+                and registered source tree are not moved or overwritten when builds are switched.
+              </p>
+              <label
+                >Live overlay paths
+                <span class="hint">one project-relative file or folder per line</span
+                ><textarea
+                  id="buildSlotOverlayPaths"
+                  rows="4"
+                  placeholder=".env&#10;config.json"
+                ></textarea>
+              </label>
+              <label class="check-row"
+                ><input id="buildSlotLinkNodeModules" type="checkbox" checked /> Reuse the live
+                project&apos;s <code>node_modules</code> through a junction/symlink when the backup does
+                not contain its own dependency folder</label
+              >
+              <p class="hint">
+                <code>.env</code> is the default overlay. Add <code>config.json</code> when a project
+                should use its current configuration while testing older code. UPM reports a
+                dependency warning when the selected build&apos;s package metadata differs from the
+                live source while shared <code>node_modules</code> is being used.
               </p>
             </fieldset>
           </section>
@@ -2521,6 +2619,9 @@
             <h2 id="backupsTitle" data-upm-icon="backups">Backups</h2>
           </div>
           <div class="dialog-heading-actions">
+            <button id="buildSlotsBtn" type="button" class="button small" data-upm-icon="pm2">
+              Build Slots
+            </button>
             <button id="verifyAllBtn" type="button" class="button small" data-upm-icon="verify">
               Verify All
             </button>
@@ -2530,6 +2631,25 @@
           </div>
         </div>
         <div id="backupsList"></div>
+      </div>
+    </dialog>
+
+    <dialog id="buildSlotsDialog">
+      <div class="dialog-card extra-wide">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">RUNNABLE BACKUP BUILDS</p>
+            <h2 id="buildSlotsTitle" data-upm-icon="pm2">Build Slots</h2>
+            <p class="muted">
+              Hot-swap PM2 between prepared backup builds without restoring over the source tree.
+            </p>
+          </div>
+          <button type="button" class="icon-button" data-close="buildSlotsDialog" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div id="buildSlotsSummary"></div>
+        <div id="buildSlotsList"></div>
       </div>
     </dialog>
 
@@ -3259,7 +3379,9 @@
                   Previous
                 </button>
                 <span id="textSanitizerChangePosition" class="badge">No Changes</span>
-                <button id="textSanitizerNextChange" type="button" class="button tiny">Next</button>
+                <button id="textSanitizerNextChange" type="button" class="button tiny">
+                  Next
+                </button>
               </div>
             </div>
             <div id="textSanitizerChangeLocation" class="muted"></div>
@@ -3822,10 +3944,10 @@
           <div class="settings-restart-notice">
             <strong>Most Runtime Changes Apply Immediately</strong>
             <span
-              >UPM live-applies supported security, authentication, encryption, editor, and
-              LAN-agent settings. Listener, storage-root, and HTTP limit/timeout changes are saved
-              safely and prompt for a restart. Pending settings are protected by a last-known-good
-              startup fallback.</span
+              >UPM live-applies supported security, authentication, encryption, editor, and LAN-agent
+              settings. Listener, storage-root, and HTTP limit/timeout changes are saved safely and
+              prompt for a restart. Pending settings are protected by a last-known-good startup
+              fallback.</span
             >
           </div>
 

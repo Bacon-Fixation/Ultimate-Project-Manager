@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Remote UPM Connections</title>
+    <link rel="stylesheet" href="remote-connect.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">ULTIMATE PROJECT MANAGER</p>
+          <h1>Remote UPM Connections</h1>
+          <p class="muted">
+            Open another UPM dashboard on your LAN inside an isolated desktop window. Login credentials are entered into that remote UPM and are never saved in this connection list.
+          </p>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Add or edit a connection</h2>
+        <form id="connectionForm">
+          <input id="connectionId" type="hidden" />
+          <label>
+            Display name
+            <input id="connectionName" maxlength="80" placeholder="Workshop PC" autocomplete="off" />
+          </label>
+          <label>
+            UPM address
+            <input
+              id="connectionUrl"
+              type="url"
+              required
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="https://192.168.1.50:4310"
+            />
+          </label>
+          <label class="check-row">
+            <input id="rememberSession" type="checkbox" checked />
+            <span>Remember the remote login session on this computer</span>
+          </label>
+          <p id="httpWarning" class="warning" hidden>
+            Plain HTTP does not encrypt the UPM username/password or session cookie on the network. HTTPS is recommended even on a trusted LAN.
+          </p>
+          <div class="actions">
+            <button type="button" id="testBtn" class="secondary">Test Connection</button>
+            <button type="submit" id="saveBtn">Save Connection</button>
+            <button type="button" id="resetBtn" class="ghost">Clear</button>
+          </div>
+        </form>
+        <p id="formStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <h2>Saved connections</h2>
+            <p class="muted small">Each saved remote UPM gets its own isolated Electron browser session.</p>
+          </div>
+        </div>
+        <div id="connectionList" class="connection-list"></div>
+      </section>
+
+      <footer>
+        <p class="muted small">
+          The remote UPM host must listen on a LAN-accessible interface and enable Remote Dashboard access. Remote actions and filesystem access remain controlled by that host's UPM security settings.
+        </p>
+        <button type="button" id="closeBtn" class="secondary">Close</button>
+      </footer>
+    </main>
+    <script src="remote-connect.js"></script>
+  </body>
+</html>

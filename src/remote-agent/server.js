@@ -77,7 +77,6 @@ function createRemoteAgentApp(options = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", false);
-  app.use(express.json({ limit: "1mb", strict: true }));
   app.use(createRequestLimiter(options.rateLimit || {}));
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -93,6 +92,7 @@ function createRemoteAgentApp(options = {}) {
       return res.status(401).json({ error: "Invalid LAN agent token." });
     return next();
   });
+  app.use(express.json({ limit: "1mb", strict: true }));
 
   const health = () => ({
     id: agentId,

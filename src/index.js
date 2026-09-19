@@ -417,17 +417,6 @@ async function createApp(options = {}) {
       .type("text/plain")
       .send("Ultimate Project Manager remote dashboard access is disabled.");
   });
-  app.use(express.json({ limit: serverConfig.jsonLimit }));
-  app.use("/api", (req, res, next) => {
-    res.setHeader("Cache-Control", "no-store");
-    const fetchSite = String(req.get("sec-fetch-site") || "").toLowerCase();
-    if (fetchSite === "cross-site")
-      return res.status(403).json({ error: "Cross-site API requests are not allowed." });
-    const origin = req.get("origin");
-    if (origin && !requestOriginAllowed(req, serverConfig))
-      return res.status(403).json({ error: "Cross-origin API requests are not allowed." });
-    return next();
-  });
   const apiRateLimiter = createRateLimiter({
     windowMs: serverConfig.apiRateLimitWindowMs,
     max: serverConfig.apiRateLimitMax,
@@ -438,7 +427,18 @@ async function createApp(options = {}) {
     max: serverConfig.writeRateLimitMax,
     keyPrefix: "write",
   });
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    const fetchSite = String(req.get("sec-fetch-site") || "").toLowerCase();
+    if (fetchSite === "cross-site")
+      return res.status(403).json({ error: "Cross-site API requests are not allowed." });
+    const origin = req.get("origin");
+    if (origin && !requestOriginAllowed(req, serverConfig))
+      return res.status(403).json({ error: "Cross-origin API requests are not allowed." });
+    return next();
+  });
   app.use("/api", apiRateLimiter);
+  app.use("/api", express.json({ limit: serverConfig.jsonLimit }));
 
   app.get("/api/auth/status", (req, res) => {
     const session = req.isDesktopTrusted
@@ -1304,6 +1304,64 @@ async function createApp(options = {}) {
     "/api/projects/:id/backups",
     asyncRoute(async (req, res) => {
       res.json({ backups: await manager.listBackups(req.params.id) });
+    }),
+  );
+
+  app.get(
+    "/api/projects/:id/build-slots",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({ builds: await manager.listBuildSlots(req.params.id) });
+    }),
+  );
+
+  app.post(
+    "/api/projects/:id/backups/:file/build-slot/prepare",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({
+        result: await manager.prepareBackupBuild(req.params.id, req.params.file, {
+          backupDestination: req.body?.backupDestination || null,
+          reset: parseBoolean(req.body?.reset, false),
+        }),
+      });
+    }),
+  );
+
+  app.post(
+    "/api/projects/:id/backups/:file/build-slot/run",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({
+        result: await manager.runBackupBuild(req.params.id, req.params.file, {
+          backupDestination: req.body?.backupDestination || null,
+          reset: parseBoolean(req.body?.reset, false),
+        }),
+      });
+    }),
+  );
+
+  app.post(
+    "/api/projects/:id/build-slots/source/run",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({ result: await manager.activateSourceBuild(req.params.id) });
+    }),
+  );
+
+  app.post(
+    "/api/projects/:id/build-slots/:slotId/run",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({ result: await manager.activateBuildSlot(req.params.id, req.params.slotId) });
+    }),
+  );
+
+  app.delete(
+    "/api/projects/:id/build-slots/:slotId",
+    requireLocalFilesystemAccess,
+    asyncRoute(async (req, res) => {
+      res.json({ builds: await manager.deleteBuildSlot(req.params.id, req.params.slotId) });
     }),
   );
 

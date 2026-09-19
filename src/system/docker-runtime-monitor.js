@@ -6,6 +6,60 @@ const { promisify } = require("util");
 const defaultExecFileAsync = promisify(execFile);
 const DEFAULT_REFRESH_MS = 10_000;
 const DEFAULT_TIMEOUT_MS = 4_000;
+const MAX_CONTAINER_DEPENDENCIES = 32;
+
+function normalizeContainerNames(values = []) {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const value of values) {
+    const name = String(value || "").trim();
+    if (!name || seen.has(name)) continue;
+    if (name.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(name))
+      throw new Error(`Invalid Docker container name or id: ${name || "(blank)"}`);
+    seen.add(name);
+    result.push(name);
+    if (result.length > MAX_CONTAINER_DEPENDENCIES)
+      throw new Error(`A project may wait for at most ${MAX_CONTAINER_DEPENDENCIES} Docker containers.`);
+  }
+  return result;
+}
+
+function parseContainerInspect(stdout, requested = []) {
+  let items;
+  try {
+    items = JSON.parse(String(stdout || "[]"));
+  } catch {
+    throw new Error("Docker returned malformed container inspection data.");
+  }
+  if (!Array.isArray(items)) throw new Error("Docker container inspection response was not an array.");
+  const byName = new Map();
+  for (const item of items) {
+    const names = [String(item?.Name || "").replace(/^\//, ""), String(item?.Id || "")].filter(Boolean);
+    for (const name of names) byName.set(name, item);
+  }
+  return requested.map((requestedName) => {
+    const exact = byName.get(requestedName);
+    const item = exact || items.find((candidate) => String(candidate?.Id || "").startsWith(requestedName));
+    if (!item) return { name: requestedName, found: false, running: false, healthy: false, ready: false, status: "missing" };
+    const state = item.State || {};
+    const running = state.Running === true || String(state.Status || "").toLowerCase() === "running";
+    const healthStatus = state.Health ? String(state.Health.Status || "unknown").toLowerCase() : null;
+    const healthy = healthStatus ? healthStatus === "healthy" : running;
+    return {
+      name: requestedName,
+      containerName: String(item.Name || "").replace(/^\//, "") || requestedName,
+      id: String(item.Id || "").slice(0, 12) || null,
+      found: true,
+      running,
+      healthcheck: Boolean(state.Health),
+      healthStatus,
+      healthy,
+      ready: running && healthy,
+      status: healthStatus || String(state.Status || "unknown").toLowerCase(),
+    };
+  });
+}
 
 function commandErrorText(error) {
   return String(error?.stderr || error?.stdout || error?.message || "").trim();
@@ -77,6 +131,49 @@ class DockerRuntimeMonitor {
       windowsHide: true,
       maxBuffer: 1024 * 1024,
     });
+  }
+
+  async inspectContainers(values = []) {
+    const names = normalizeContainerNames(values);
+    if (!names.length) return { ready: true, containers: [], message: "No Docker container dependencies configured." };
+    try {
+      const { stdout } = await this._run(this.platform === "win32" ? "docker.exe" : "docker", [
+        "inspect",
+        "--type=container",
+        ...names,
+      ]);
+      const containers = parseContainerInspect(stdout, names);
+      const ready = containers.every((item) => item.ready);
+      const waiting = containers.filter((item) => !item.ready);
+      return {
+        ready,
+        containers,
+        message: ready
+          ? `Docker dependencies ready: ${containers.map((item) => item.containerName || item.name).join(", ")}.`
+          : `Waiting for Docker containers: ${waiting.map((item) => `${item.name} (${item.status})`).join(", ")}.`,
+      };
+    } catch (error) {
+      const text = commandErrorText(error);
+      const missingMatch = /No such object:\s*([^\r\n]+)/i.exec(text);
+      if (missingMatch) {
+        const missing = missingMatch[1].trim();
+        const containers = names.map((name) => ({
+          name,
+          found: name !== missing,
+          running: false,
+          healthy: false,
+          ready: false,
+          status: name === missing ? "missing" : "unknown",
+        }));
+        return { ready: false, containers, message: `Waiting for Docker container ${missing} (missing).` };
+      }
+      return {
+        ready: false,
+        containers: names.map((name) => ({ name, found: false, running: false, healthy: false, ready: false, status: "unavailable" })),
+        error: text || "Docker container inspection failed.",
+        message: text || "Unable to inspect Docker container dependencies.",
+      };
+    }
   }
 
   async _dockerInfo() {
@@ -247,4 +344,6 @@ module.exports = {
   parseDockerInfo,
   parseWindowsService,
   taskListHasDockerDesktop,
+  normalizeContainerNames,
+  parseContainerInspect,
 };

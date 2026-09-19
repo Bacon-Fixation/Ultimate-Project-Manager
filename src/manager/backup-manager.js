@@ -14,11 +14,14 @@ const { normalizeIncludePatterns } = require("../filesystem/ignore-rules");
 const { atomicWriteJson, readJsonRecoverable } = require("../filesystem/atomic-file");
 const { discoverNodeProjects, pathKey } = require("../discovery/project-discovery");
 const { Pm2Monitor, isPathInside } = require("../pm2/pm2-monitor");
+const { normalizeContainerNames } = require("../system/docker-runtime-monitor");
+const { createElevationChecker } = require("../security/elevation");
 const { Pm2HistoryStore } = require("../pm2/pm2-history-store");
 const { readProcessLogs } = require("../pm2/pm2-log-reader");
 const { DependencyInspector } = require("../dependencies/dependency-inspector");
 const { buildLineDiff } = require("../diff/line-diff");
 const { RecoveryService } = require("../recovery/recovery-service");
+const { BuildSlotManager, normalizeOverlayPaths } = require("../runtime/build-slot-manager");
 const { DeltaJournal } = require("../recovery/delta-journal");
 const { ProjectLauncher } = require("../integrations/project-launcher");
 const { FeaturePackService } = require("../export/feature-pack-service");
@@ -53,6 +56,7 @@ const PROJECT_EDITORS = new Set([
 const PM2_AUTO_START_SUCCESS_COOLDOWN_MS = 60_000;
 const PM2_AUTO_START_FAILURE_COOLDOWN_MS = 5 * 60_000;
 const PM2_DOCKER_WAIT_RETRY_MS = 10_000;
+const DEFAULT_CONTAINER_WAIT_TIMEOUT_SECONDS = 300;
 
 function normalizeProjectEditor(value, fallback = "default") {
   const normalized = String(value || fallback)
@@ -132,6 +136,14 @@ function normalizeProject(input, existing = null) {
     : existing?.backupDirSecondary;
   const schedule = normalizeSchedule(input.schedule || {}, existing?.schedule || DEFAULT_SCHEDULE);
   const pm2Names = input.pm2ProcessNames ?? existing?.pm2ProcessNames ?? [];
+  const requiredContainers = normalizeContainerNames(
+    input.pm2RequiredContainers ?? existing?.pm2RequiredContainers ?? [],
+  );
+  const containerWaitTimeoutRaw = Number(
+    input.pm2StartupGateTimeoutSeconds ??
+      existing?.pm2StartupGateTimeoutSeconds ??
+      DEFAULT_CONTAINER_WAIT_TIMEOUT_SECONDS,
+  );
   const id = existing?.id
     ? requireSafePathComponent(existing.id, "Project id", { maxLength: 128 })
     : makeId();
@@ -208,6 +220,19 @@ function normalizeProject(input, existing = null) {
         : input.pm2WaitForDocker === undefined
           ? (existing?.pm2WaitForDocker ?? false)
           : Boolean(input.pm2WaitForDocker),
+    pm2RequiredContainers: executionTarget === "lan" ? [] : requiredContainers,
+    pm2StartupGateTimeoutSeconds:
+      executionTarget === "lan"
+        ? DEFAULT_CONTAINER_WAIT_TIMEOUT_SECONDS
+        : Number.isFinite(containerWaitTimeoutRaw)
+          ? Math.max(15, Math.min(3600, Math.floor(containerWaitTimeoutRaw)))
+          : DEFAULT_CONTAINER_WAIT_TIMEOUT_SECONDS,
+    pm2RequireElevation:
+      executionTarget === "lan"
+        ? false
+        : input.pm2RequireElevation === undefined
+          ? (existing?.pm2RequireElevation ?? false)
+          : Boolean(input.pm2RequireElevation),
     pm2EcosystemFile:
       String(
         input.pm2EcosystemFile ?? existing?.pm2EcosystemFile ?? "ecosystem.config.js",
@@ -262,6 +287,14 @@ function normalizeProject(input, existing = null) {
         ),
       ),
     ),
+    buildSlotOverlayPaths: normalizeOverlayPaths(
+      input.buildSlotOverlayPaths ?? existing?.buildSlotOverlayPaths ?? [".env"],
+      [".env"],
+    ),
+    buildSlotLinkNodeModules:
+      input.buildSlotLinkNodeModules === undefined
+        ? (existing?.buildSlotLinkNodeModules ?? true)
+        : Boolean(input.buildSlotLinkNodeModules),
     serviceHealth: normalizeServiceHealthConfig(
       input.serviceHealth || {},
       existing?.serviceHealth || null,
@@ -387,6 +420,10 @@ class BackupManager extends EventEmitter {
       manager: this,
       dataDir: this.dataDir,
     });
+    this.buildSlots =
+      options.buildSlots ||
+      new BuildSlotManager({ root: options.buildSlotRoot || path.join(this.dataDir, "build-slots") });
+    this.buildSlotSwitching = new Set();
     this.featurePacks = new FeaturePackService({ manager: this });
     this.projectTasks = new ProjectTaskService({ dataDir: this.dataDir });
     this.projectLauncher =
@@ -398,6 +435,8 @@ class BackupManager extends EventEmitter {
     this.pm2AutoStartRunning = new Set();
     this.pm2AutoStartAttempts = new Map();
     this.pm2AutoStartSuppressed = new Set();
+    this.pm2StartQueue = new Map();
+    this.elevationChecker = options.elevationChecker || createElevationChecker();
     this.dockerRuntimeMonitor = options.dockerRuntimeMonitor || null;
     this.pm2History =
       options.pm2History ||
@@ -435,6 +474,7 @@ class BackupManager extends EventEmitter {
     await fsp.mkdir(this.backupRoot, { recursive: true });
     await fsp.mkdir(this.restoreRoot, { recursive: true });
     await this.recovery.init();
+    await this.buildSlots.init();
     await this.projectTasks.init();
     await this._loadActivity();
     const config = await this._readConfig();
@@ -446,7 +486,7 @@ class BackupManager extends EventEmitter {
     await fsp.mkdir(this.restoreRoot, { recursive: true });
 
     const needsMigration =
-      Number(config.version || 0) < 13 ||
+      Number(config.version || 0) < 15 ||
       !(config.projects || []).every(
         (raw) =>
           raw?.backupFolderName &&
@@ -454,6 +494,9 @@ class BackupManager extends EventEmitter {
           raw?.pm2Monitoring !== undefined &&
           raw?.pm2ControlsEnabled !== undefined &&
           raw?.pm2WaitForDocker !== undefined &&
+          Array.isArray(raw?.pm2RequiredContainers) &&
+          raw?.pm2StartupGateTimeoutSeconds !== undefined &&
+          raw?.pm2RequireElevation !== undefined &&
           Array.isArray(raw?.pm2ProcessNames) &&
           raw?.pm2AutoStart !== undefined &&
           raw?.pm2EcosystemFile !== undefined &&
@@ -465,6 +508,8 @@ class BackupManager extends EventEmitter {
           raw?.deltaJournalMaxEntries !== undefined &&
           raw?.deltaJournalMaxStorageMB !== undefined &&
           raw?.deltaJournalMaxFileMB !== undefined &&
+          Array.isArray(raw?.buildSlotOverlayPaths) &&
+          raw?.buildSlotLinkNodeModules !== undefined &&
           raw?.executionTarget !== undefined &&
           raw?.remoteAgentId !== undefined &&
           raw?.serviceHealth !== undefined &&
@@ -484,19 +529,30 @@ class BackupManager extends EventEmitter {
       }
     }
 
+    for (const project of this.projects.values()) {
+      if (!isRemoteProject(project)) await this.buildSlots.refreshProject(project.id);
+    }
     if (needsMigration) await this._writeConfig();
     for (const project of this.projects.values()) this._applyAutomation(project);
     await this.pm2History.init();
     this.pm2Monitor.on("sample", (snapshot) => {
       this.pm2History.recordSnapshot(snapshot).catch(() => {});
-      setImmediate(() => this._handlePm2AutoStart(snapshot).catch(() => {}));
+      setImmediate(async () => {
+        await this._handlePm2QueuedStarts(snapshot).catch(() => {});
+        await this._handlePm2AutoStart(snapshot).catch(() => {});
+      });
     });
     this.pm2Monitor.on("event", (event) => {
       this.pm2History.recordEvent(event).catch(() => {});
       this._logPm2Event(event).catch(() => {});
     });
     await this.pm2Monitor.start(() =>
-      [...this.projects.values()].filter((project) => !isRemoteProject(project)),
+      [...this.projects.values()]
+        .filter((project) => !isRemoteProject(project))
+        .map((project) => ({
+          ...project,
+          pm2RuntimeRoots: this.buildSlots.runtimeRoots(project.id),
+        })),
     );
     await this.remoteAgentMonitor.start(() => [...this.projects.values()].filter(isRemoteProject));
     await this.serviceHealthMonitor.start(() => [...this.projects.values()]);
@@ -522,7 +578,7 @@ class BackupManager extends EventEmitter {
     if (config) return config;
 
     const initial = {
-      version: 13,
+      version: 15,
       backupRoot: "./backups",
       restoreRoot: "./restores",
       projects: [],
@@ -533,7 +589,7 @@ class BackupManager extends EventEmitter {
 
   async _writeConfig(config = null) {
     const data = config || {
-      version: 13,
+      version: 15,
       backupRoot: this.backupRoot,
       restoreRoot: this.restoreRoot,
       projects: [...this.projects.values()],
@@ -745,6 +801,7 @@ class BackupManager extends EventEmitter {
         lastResult: null,
         lastError: null,
         pm2AutoStart: null,
+        pm2StartGate: null,
       });
     }
     return this.runtime.get(projectId);
@@ -881,10 +938,12 @@ class BackupManager extends EventEmitter {
       this._clearAutomation(projectId);
       if (!next.has(projectId)) {
         this.runtime.delete(projectId);
+        this.buildSlots.forgetProject(projectId);
         this.dependencyInspector.clear(projectId);
         this.pm2AutoStartRunning.delete(projectId);
         this.pm2AutoStartAttempts.delete(projectId);
         this.pm2AutoStartSuppressed.delete(projectId);
+        this.pm2StartQueue.delete(projectId);
         this.serviceHealthMonitor.forgetProject(projectId);
       }
     }
@@ -939,6 +998,7 @@ class BackupManager extends EventEmitter {
         ? this.remoteAgentMonitor.getProjectStatus(id)
         : this.pm2Monitor.getProjectStatus(id),
       serviceHealthStatus: this.serviceHealthMonitor.getProjectStatus(id),
+      buildRuntime: isRemoteProject(project) ? null : this.buildSlots.summary(project),
       runtime: {
         running: runtime.running,
         lastCheckAt: runtime.lastCheckAt,
@@ -948,6 +1008,7 @@ class BackupManager extends EventEmitter {
         lastResult: runtime.lastResult,
         lastError: runtime.lastError,
         pm2AutoStart: runtime.pm2AutoStart || null,
+        pm2StartGate: runtime.pm2StartGate || null,
       },
     };
   }
@@ -988,6 +1049,7 @@ class BackupManager extends EventEmitter {
     await this._assertProjectRoot(project.projectRoot, null, project);
     this._assertDestinationLayout(project);
     this.projects.set(project.id, project);
+    if (!isRemoteProject(project)) await this.buildSlots.refreshProject(project.id);
     await this._writeConfig();
     this._applyAutomation(project);
     await this.refreshPm2();
@@ -1005,13 +1067,20 @@ class BackupManager extends EventEmitter {
     await this._assertProjectRoot(updated.projectRoot, id, updated);
     this._assertDestinationLayout(updated);
     this.projects.set(id, updated);
+    if (!isRemoteProject(updated)) await this.buildSlots.refreshProject(id);
+    else this.buildSlots.forgetProject(id);
     if (
       current.pm2AutoStart !== updated.pm2AutoStart ||
       current.pm2WaitForDocker !== updated.pm2WaitForDocker ||
+      JSON.stringify(current.pm2RequiredContainers || []) !==
+        JSON.stringify(updated.pm2RequiredContainers || []) ||
+      current.pm2RequireElevation !== updated.pm2RequireElevation ||
+      current.pm2StartupGateTimeoutSeconds !== updated.pm2StartupGateTimeoutSeconds ||
       updated.pm2AutoStart !== true
     ) {
       this.pm2AutoStartSuppressed.delete(id);
       this.pm2AutoStartAttempts.delete(id);
+      this.pm2StartQueue.delete(id);
     }
     await this._writeConfig();
     this._applyAutomation(updated);
@@ -1067,10 +1136,12 @@ class BackupManager extends EventEmitter {
     if (!project) throw new Error("Project not found.");
     this._clearAutomation(id);
     this.runtime.delete(id);
+    this.buildSlots.forgetProject(id);
     this.dependencyInspector.clear(id);
     this.pm2AutoStartRunning.delete(id);
     this.pm2AutoStartAttempts.delete(id);
     this.pm2AutoStartSuppressed.delete(id);
+    this.pm2StartQueue.delete(id);
     this.serviceHealthMonitor.forgetProject(id);
     this.projects.delete(id);
     await this.projectTasks.removeProject(id);
@@ -2058,6 +2129,266 @@ class BackupManager extends EventEmitter {
     return { ...result, backupDestination: copy.destination.key };
   }
 
+  _assertBuildSlotProject(project, options = {}) {
+    if (!project) throw new Error("Project not found.");
+    if (isRemoteProject(project))
+      throw new Error("Runnable backup builds are currently available for local UPM projects only.");
+    if (options.requireControls === true) {
+      if (project.pm2Monitoring === false)
+        throw new Error("PM2 monitoring must be enabled before a backup build can be run.");
+      if (project.pm2ControlsEnabled !== true)
+        throw new Error(
+          "PM2 dashboard controls must be enabled for this project before UPM can hot-swap builds.",
+        );
+    }
+  }
+
+  async listBuildSlots(id) {
+    const project = this.projects.get(id);
+    this._assertBuildSlotProject(project);
+    await this.buildSlots.refreshProject(id);
+    return this.buildSlots.list(project);
+  }
+
+  async prepareBackupBuild(id, fileName, options = {}) {
+    const project = this.projects.get(id);
+    this._assertBuildSlotProject(project);
+    const active = this.buildSlots.active(project);
+    const copy = await this._resolveBackupCopy(id, fileName, options.backupDestination || null);
+    const backup = (await copy.engine.listBackups()).find((item) => item.file === fileName);
+    if (!backup) throw new Error("Backup metadata was not found.");
+    const verification = await copy.engine.verifyBackup(fileName);
+    if (!verification.valid)
+      throw new Error(`Backup failed integrity verification: ${verification.message}`);
+
+    if (options.reset === true && active.type === "slot" && active.slot?.backupFile === fileName) {
+      throw new Error("The active build cannot be reset while it is running. Return to source first.");
+    }
+
+    const result = await this.buildSlots.prepare(
+      project,
+      { ...backup, backupDestination: copy.destination.key },
+      {
+        backupDestination: copy.destination.key,
+        reset: options.reset === true,
+        restore: (destination) =>
+          copy.engine.restoreBackup(fileName, destination, {
+            overwrite: false,
+          }),
+      },
+    );
+    await this.log("info", `${result.reused ? "Build slot ready" : "Backup prepared as build"}: ${project.name}`, {
+      projectId: id,
+      operation: result.reused ? "build-slot-ready" : "build-slot-prepare",
+      backupFile: fileName,
+      backupDestination: copy.destination.key,
+      slotId: result.slot?.slotId || null,
+      reset: options.reset === true,
+    });
+    return result;
+  }
+
+  _processRunsFromBuildRoot(processInfo, root) {
+    if (processInfo?.cwd) return isPathInside(root, processInfo.cwd);
+    if (processInfo?.script) return isPathInside(root, processInfo.script);
+    return false;
+  }
+
+  _runningBuildSelection(project, status) {
+    const online = (status?.processes || []).filter((proc) => proc.status === "online");
+    if (!online.length) return null;
+    const sourceRoot = path.resolve(project.projectRoot);
+    if (online.every((proc) => this._processRunsFromBuildRoot(proc, sourceRoot))) {
+      return { type: "source", root: sourceRoot, slot: null };
+    }
+    const listing = this.buildSlots.list(project);
+    for (const slot of listing.slots) {
+      if (online.every((proc) => this._processRunsFromBuildRoot(proc, slot.appRoot))) {
+        return { type: "slot", slotId: slot.slotId, root: slot.appRoot, slot };
+      }
+    }
+    return null;
+  }
+
+  async _waitForBuildOnline(id, root, options = {}) {
+    const attempts = Math.max(1, Math.min(10, Number(options.attempts) || 5));
+    const delayMs = Math.max(50, Math.min(3000, Number(options.delayMs) || 500));
+    let status = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await this.pm2Monitor.refresh();
+      status = this.pm2Monitor.getProjectStatus(id);
+      const online = (status.processes || []).filter((proc) => proc.status === "online");
+      if (online.length && online.every((proc) => this._processRunsFromBuildRoot(proc, root))) {
+        return status;
+      }
+    }
+    const online = (status?.processes || []).filter((proc) => proc.status === "online");
+    if (!online.length)
+      throw new Error("The selected build did not reach an online PM2 state.");
+    throw new Error(
+      "PM2 started the project outside the selected build slot. Check the ecosystem file for an absolute cwd or script path.",
+    );
+  }
+
+  async _deleteMatchedPm2Processes(id) {
+    await this.pm2Monitor.refresh();
+    const status = this.pm2Monitor.getProjectStatus(id);
+    if (!status.available) throw new Error(status.error || "PM2 is unavailable.");
+    const deleted = [];
+    for (const proc of status.processes || []) {
+      await this.pm2Monitor.deleteProcess(proc);
+      deleted.push({ pm2Id: proc.id, name: proc.name });
+    }
+    return deleted;
+  }
+
+  async _startBuildRoot(project, root) {
+    await this.pm2Monitor.startProjectFromEcosystem({ ...project, projectRoot: root });
+    return this._waitForBuildOnline(project.id, root);
+  }
+
+  async _activateBuildSelection(project, selection, options = {}) {
+    this._assertBuildSlotProject(project, { requireControls: true });
+    if (this.buildSlotSwitching.has(project.id))
+      throw new Error("A build switch is already in progress for this project.");
+
+    const gate = await this._projectStartGate(project, { refresh: true });
+    if (!gate.ready) throw new Error(gate.message || "Project startup gate is not ready.");
+
+    await this.buildSlots.refreshProject(project.id);
+    const previous = this.buildSlots.active(project);
+    let target;
+    let sync = null;
+    if (selection?.type === "slot") {
+      const listing = this.buildSlots.list(project);
+      const slot = listing.slots.find((item) => item.slotId === selection.slotId);
+      if (!slot) throw new Error("Prepared build slot was not found.");
+      sync = await this.buildSlots.synchronize(project, slot, {
+        overlayPaths: project.buildSlotOverlayPaths,
+        linkNodeModules: project.buildSlotLinkNodeModules,
+      });
+      target = { type: "slot", slotId: slot.slotId, root: slot.appRoot, slot };
+    } else {
+      target = { type: "source", root: path.resolve(project.projectRoot), slot: null };
+    }
+
+    await this.pm2Monitor.refresh();
+    const currentStatus = this.pm2Monitor.getProjectStatus(project.id);
+    const runningBeforeSwitch = currentStatus.available
+      ? this._runningBuildSelection(project, currentStatus)
+      : null;
+    const rollbackSelection = runningBeforeSwitch || previous;
+
+    if (previous.type === target.type && previous.slot?.slotId === target.slotId) {
+      const online = (currentStatus.processes || []).filter((proc) => proc.status === "online");
+      if (
+        currentStatus.available &&
+        online.length &&
+        online.every((proc) => this._processRunsFromBuildRoot(proc, target.root))
+      ) {
+        return {
+          switched: false,
+          alreadyActive: true,
+          active: this.buildSlots.active(project),
+          sync,
+          pm2: currentStatus,
+        };
+      }
+    }
+
+    this.buildSlotSwitching.add(project.id);
+    this.pm2StartQueue.delete(project.id);
+    let deleted = [];
+    try {
+      deleted = await this._deleteMatchedPm2Processes(project.id);
+      await this.buildSlots.setActive(project, selection);
+      const pm2 = await this._startBuildRoot(project, target.root);
+      this.pm2AutoStartSuppressed.delete(project.id);
+      await this.log("success", `Active build switched: ${project.name}`, {
+        projectId: project.id,
+        operation: "build-slot-activate",
+        buildType: target.type,
+        slotId: target.slotId || null,
+        backupFile: target.slot?.backupFile || null,
+        previousBuildType: previous.type,
+        previousSlotId: previous.slot?.slotId || null,
+        runningBeforeSwitchType: runningBeforeSwitch?.type || null,
+        runningBeforeSwitchSlotId: runningBeforeSwitch?.slot?.slotId || null,
+        dependencyMismatch: sync?.dependencyMismatch === true,
+        deletedProcesses: deleted,
+      });
+      return {
+        switched: true,
+        active: this.buildSlots.active(project),
+        previous,
+        sync,
+        deletedProcesses: deleted,
+        pm2,
+      };
+    } catch (error) {
+      let rollbackError = null;
+      try {
+        await this._deleteMatchedPm2Processes(project.id).catch(() => []);
+        await this.buildSlots.setActive(
+          project,
+          rollbackSelection.type === "slot"
+            ? { type: "slot", slotId: rollbackSelection.slot?.slotId || rollbackSelection.slotId }
+            : { type: "source" },
+        );
+        await this._startBuildRoot(project, rollbackSelection.root);
+      } catch (rollback) {
+        rollbackError = rollback;
+      }
+      await this.log("error", `Build switch failed${rollbackError ? " and rollback failed" : "; previous build restored"}: ${project.name}`, {
+        projectId: project.id,
+        operation: "build-slot-activate",
+        targetBuildType: target.type,
+        targetSlotId: target.slotId || null,
+        error: error.message,
+        rollbackError: rollbackError?.message || null,
+      });
+      if (rollbackError) {
+        throw new Error(
+          `Build switch failed (${error.message}) and automatic rollback also failed (${rollbackError.message}).`,
+        );
+      }
+      throw new Error(`Build switch failed and the previous build was restored: ${error.message}`);
+    } finally {
+      this.buildSlotSwitching.delete(project.id);
+      await this.pm2Monitor.refresh().catch(() => {});
+    }
+  }
+
+  async activateBuildSlot(id, slotId) {
+    const project = this.projects.get(id);
+    return this._activateBuildSelection(project, { type: "slot", slotId });
+  }
+
+  async activateSourceBuild(id) {
+    const project = this.projects.get(id);
+    return this._activateBuildSelection(project, { type: "source" });
+  }
+
+  async runBackupBuild(id, fileName, options = {}) {
+    const prepared = await this.prepareBackupBuild(id, fileName, options);
+    if (!prepared.slot?.slotId) throw new Error("Prepared build slot was not available.");
+    const activation = await this.activateBuildSlot(id, prepared.slot.slotId);
+    return { prepared, activation };
+  }
+
+  async deleteBuildSlot(id, slotId) {
+    const project = this.projects.get(id);
+    this._assertBuildSlotProject(project);
+    await this.buildSlots.delete(project, slotId);
+    await this.log("info", `Prepared build deleted: ${project.name}`, {
+      projectId: id,
+      operation: "build-slot-delete",
+      slotId,
+    });
+    return this.buildSlots.list(project);
+  }
+
   async inspectDependencies(id, options = {}) {
     const project = this.projects.get(id);
     if (!project) throw new Error("Project not found.");
@@ -2174,8 +2505,26 @@ class BackupManager extends EventEmitter {
     return this.projectLauncher.repositoryInfo(project);
   }
 
+  async _elevationStartGate(project, options = {}) {
+    if (project.pm2RequireElevation !== true) return { ready: true, enabled: false };
+    const status = await this.elevationChecker(options.refresh === true);
+    if (status?.elevated === true) return { ready: true, enabled: true, elevation: status };
+    return {
+      ready: false,
+      enabled: true,
+      reason: "elevation-required",
+      message:
+        "This project requires an Administrator/root UPM session before it may be started. UPM never stores or supplies an elevation password.",
+      elevation: status || null,
+    };
+  }
+
   async _dockerStartGate(project, options = {}) {
-    if (project.pm2WaitForDocker !== true) return { ready: true, enabled: false };
+    const requiredContainers = Array.isArray(project.pm2RequiredContainers)
+      ? project.pm2RequiredContainers
+      : [];
+    if (project.pm2WaitForDocker !== true && !requiredContainers.length)
+      return { ready: true, enabled: false };
     if (!this.dockerRuntimeMonitor) {
       return {
         ready: false,
@@ -2188,15 +2537,117 @@ class BackupManager extends EventEmitter {
       options.refresh === false
         ? this.dockerRuntimeMonitor.getCurrent()
         : await this.dockerRuntimeMonitor.refresh();
-    if (current?.daemonReady === true)
+    if (current?.daemonReady !== true) {
+      return {
+        ready: false,
+        enabled: true,
+        reason: "waiting-for-docker",
+        message: current?.message || "Waiting for the Docker daemon to become ready.",
+        dockerRuntime: current || null,
+      };
+    }
+    if (!requiredContainers.length)
       return { ready: true, enabled: true, dockerRuntime: current };
+
+    const dependencies = await this.dockerRuntimeMonitor.inspectContainers(requiredContainers);
+    if (!dependencies.ready) {
+      return {
+        ready: false,
+        enabled: true,
+        reason: "waiting-for-containers",
+        message: dependencies.message || "Waiting for required Docker containers.",
+        dockerRuntime: current,
+        containerDependencies: dependencies,
+      };
+    }
     return {
-      ready: false,
+      ready: true,
       enabled: true,
-      reason: "waiting-for-docker",
-      message: current?.message || "Waiting for the Docker daemon to become ready.",
-      dockerRuntime: current || null,
+      dockerRuntime: current,
+      containerDependencies: dependencies,
     };
+  }
+
+  async _projectStartGate(project, options = {}) {
+    const elevationGate = await this._elevationStartGate(project, options);
+    if (!elevationGate.ready) return elevationGate;
+    const dockerGate = await this._dockerStartGate(project, options);
+    if (!dockerGate.ready) return { ...dockerGate, elevation: elevationGate.elevation || null };
+    return { ...dockerGate, elevation: elevationGate.elevation || null };
+  }
+
+  _queueProjectStart(project, gate) {
+    const existing = this.pm2StartQueue.get(project.id);
+    const queuedAtMs = existing?.queuedAtMs || Date.now();
+    this.pm2StartQueue.set(project.id, { queuedAtMs });
+    const runtime = this._runtime(project.id);
+    runtime.pm2StartGate = {
+      state: gate.reason || "waiting",
+      queued: true,
+      queuedAt: new Date(queuedAtMs).toISOString(),
+      message: gate.message || null,
+      dockerRuntime: gate.dockerRuntime || null,
+      containerDependencies: gate.containerDependencies || null,
+      elevation: gate.elevation || null,
+    };
+    return queuedAtMs;
+  }
+
+  async _handlePm2QueuedStarts(snapshot = {}) {
+    if (!this.pm2StartQueue.size) return;
+    const summaries = new Map(
+      (Array.isArray(snapshot.projects) ? snapshot.projects : []).map((item) => [item.projectId, item]),
+    );
+    for (const [projectId, queued] of [...this.pm2StartQueue]) {
+      const project = this.projects.get(projectId);
+      if (this.pm2AutoStartRunning.has(projectId)) continue;
+      if (!project || isRemoteProject(project) || project.pm2Monitoring === false) {
+        this.pm2StartQueue.delete(projectId);
+        continue;
+      }
+      const timeoutMs = Math.max(15, Number(project.pm2StartupGateTimeoutSeconds || 300)) * 1000;
+      if (Date.now() - queued.queuedAtMs >= timeoutMs) {
+        this.pm2StartQueue.delete(projectId);
+        this._runtime(projectId).pm2StartGate = {
+          state: "timed-out",
+          queuedAt: new Date(queued.queuedAtMs).toISOString(),
+          message: `Startup gate timed out after ${project.pm2StartupGateTimeoutSeconds || 300} seconds.`,
+        };
+        await this.log("warning", `Queued PM2 start timed out: ${project.name}`, {
+          projectId,
+          operation: "pm2-project-start-gate",
+        });
+        continue;
+      }
+      const summary = summaries.get(projectId);
+      if (summary?.processes?.some((proc) => proc.status === "online")) {
+        this.pm2StartQueue.delete(projectId);
+        this._runtime(projectId).pm2StartGate = null;
+        continue;
+      }
+      try {
+        const result = await this.startProjectInPm2(projectId, {
+          queued: true,
+          refresh: false,
+        });
+        if (result.started || result.reason === "already-online") {
+          this.pm2StartQueue.delete(projectId);
+          this._runtime(projectId).pm2StartGate = null;
+        }
+      } catch (error) {
+        this.pm2StartQueue.delete(projectId);
+        this._runtime(projectId).pm2StartGate = {
+          state: "failed",
+          queuedAt: new Date(queued.queuedAtMs).toISOString(),
+          message: error.message,
+        };
+        await this.log("warning", `Queued PM2 start failed: ${project.name}`, {
+          projectId,
+          operation: "pm2-project-start-gate",
+          error: error.message,
+        });
+      }
+    }
   }
 
   async startProjectInPm2(id, options = {}) {
@@ -2216,9 +2667,31 @@ class BackupManager extends EventEmitter {
       );
 
     if (options.refresh === true) await this.refreshPm2();
-    const status = this.pm2Monitor.getProjectStatus(id);
+    let status = this.pm2Monitor.getProjectStatus(id);
     if (!status.available) throw new Error(status.error || "PM2 is unavailable.");
+
+    const activeBuild = this.buildSlots.active(project);
+    if (activeBuild.type === "slot") {
+      const staleProcesses = (status.processes || []).filter(
+        (proc) => !this._processRunsFromBuildRoot(proc, activeBuild.root),
+      );
+      if (staleProcesses.length) {
+        for (const proc of staleProcesses) await this.pm2Monitor.deleteProcess(proc);
+        await this.pm2Monitor.refresh();
+        status = this.pm2Monitor.getProjectStatus(id);
+        if (!status.available) throw new Error(status.error || "PM2 is unavailable.");
+        await this.log("warning", `Removed stale PM2 build processes: ${project.name}`, {
+          projectId: id,
+          operation: "pm2-build-slot-reconcile",
+          activeSlotId: activeBuild.slot?.slotId || null,
+          removedProcesses: staleProcesses.map((proc) => ({ pm2Id: proc.id, name: proc.name })),
+        });
+      }
+    }
+
     if (status.processes.some((proc) => proc.status === "online")) {
+      this.pm2StartQueue.delete(id);
+      this._runtime(id).pm2StartGate = null;
       return {
         started: false,
         skipped: true,
@@ -2227,18 +2700,39 @@ class BackupManager extends EventEmitter {
       };
     }
 
-    const dockerGate = await this._dockerStartGate(project, { refresh: !automatic });
-    if (!dockerGate.ready) {
+    const startGate = await this._projectStartGate(project, { refresh: !automatic });
+    if (!startGate.ready) {
+      const queueable =
+        !automatic &&
+        options.queued !== true &&
+        ["waiting-for-docker", "waiting-for-containers"].includes(startGate.reason);
+      if (queueable) this._queueProjectStart(project, startGate);
+      else if (!automatic && options.queued !== true) {
+        this._runtime(id).pm2StartGate = {
+          state: startGate.reason || "blocked",
+          queued: false,
+          queuedAt: null,
+          message: startGate.message || null,
+          dockerRuntime: startGate.dockerRuntime || null,
+          containerDependencies: startGate.containerDependencies || null,
+          elevation: startGate.elevation || null,
+        };
+      }
       return {
         started: false,
         skipped: true,
         waiting: true,
-        reason: dockerGate.reason,
-        message: dockerGate.message,
-        dockerRuntime: dockerGate.dockerRuntime || null,
+        queued: queueable,
+        reason: startGate.reason,
+        message: startGate.message,
+        dockerRuntime: startGate.dockerRuntime || null,
+        containerDependencies: startGate.containerDependencies || null,
+        elevation: startGate.elevation || null,
         projectId: id,
       };
     }
+    this.pm2StartQueue.delete(id);
+    this._runtime(id).pm2StartGate = null;
 
     const stopped = status.processes.filter((proc) =>
       ["stopped", "offline"].includes(String(proc.status || "").toLowerCase()),
@@ -2277,7 +2771,9 @@ class BackupManager extends EventEmitter {
       );
     }
 
-    const result = await this.pm2Monitor.startProjectFromEcosystem(project);
+    const startProject =
+      activeBuild.type === "slot" ? { ...project, projectRoot: activeBuild.root } : project;
+    const result = await this.pm2Monitor.startProjectFromEcosystem(startProject);
     await this.log(
       "info",
       `${automatic ? "PM2 auto-start from ecosystem" : "Started project in PM2"}: ${project.name}`,
@@ -2305,7 +2801,16 @@ class BackupManager extends EventEmitter {
       )
         continue;
       if (this.pm2AutoStartSuppressed.has(project.id)) continue;
-      if (!summary.available || summary.processes?.some((proc) => proc.status === "online"))
+      if (this.buildSlotSwitching.has(project.id)) continue;
+      if (this.pm2StartQueue.has(project.id)) continue;
+      if (!summary.available) continue;
+      const activeBuild = this.buildSlots.active(project);
+      const onlineProcesses = (summary.processes || []).filter((proc) => proc.status === "online");
+      if (
+        onlineProcesses.length &&
+        (activeBuild.type !== "slot" ||
+          onlineProcesses.every((proc) => this._processRunsFromBuildRoot(proc, activeBuild.root)))
+      )
         continue;
       const statuses = (summary.processes || []).map((proc) =>
         String(proc.status || "").toLowerCase(),
@@ -2334,9 +2839,13 @@ class BackupManager extends EventEmitter {
           automatic: true,
           refresh: false,
         });
-        const waitingForDocker = result.reason === "waiting-for-docker";
+        const waitingForGate = [
+          "waiting-for-docker",
+          "waiting-for-containers",
+          "elevation-required",
+        ].includes(result.reason);
         runtime.pm2AutoStart = {
-          state: waitingForDocker ? "waiting-for-docker" : result.started ? "started" : "skipped",
+          state: waitingForGate ? result.reason : result.started ? "started" : "skipped",
           attemptedAt: new Date().toISOString(),
           message: result.message || result.reason || result.mode || null,
           dockerRuntime: result.dockerRuntime || null,
@@ -2344,7 +2853,7 @@ class BackupManager extends EventEmitter {
         this.pm2AutoStartAttempts.set(project.id, {
           nextAttemptAt:
             Date.now() +
-            (waitingForDocker ? PM2_DOCKER_WAIT_RETRY_MS : PM2_AUTO_START_SUCCESS_COOLDOWN_MS),
+            (waitingForGate ? PM2_DOCKER_WAIT_RETRY_MS : PM2_AUTO_START_SUCCESS_COOLDOWN_MS),
           ok: true,
         });
       } catch (error) {
@@ -2477,14 +2986,16 @@ class BackupManager extends EventEmitter {
       .trim()
       .toLowerCase();
     if (["start", "restart", "reload"].includes(requestedAction)) {
-      const dockerGate = await this._dockerStartGate(project);
-      if (!dockerGate.ready) {
+      const startGate = await this._projectStartGate(project);
+      if (!startGate.ready) {
         return {
           action: requestedAction,
           delayed: true,
-          reason: dockerGate.reason,
-          message: dockerGate.message,
-          dockerRuntime: dockerGate.dockerRuntime || null,
+          reason: startGate.reason,
+          message: startGate.message,
+          dockerRuntime: startGate.dockerRuntime || null,
+          containerDependencies: startGate.containerDependencies || null,
+          elevation: startGate.elevation || null,
           pm2Id: target.id,
           processName: target.name,
           projectId: id,
@@ -2493,6 +3004,7 @@ class BackupManager extends EventEmitter {
       }
     }
     const result = await this.pm2Monitor.executeAction(target, action);
+    if (result.action === "stop") this.pm2StartQueue.delete(id);
     if (result.action === "stop" && project.pm2AutoStart === true) {
       this.pm2AutoStartSuppressed.add(id);
       const runtime = this._runtime(id);
@@ -2821,6 +3333,7 @@ class BackupManager extends EventEmitter {
     this.remoteAgentMonitor.stop();
     this.serviceHealthMonitor.stop();
     for (const projectId of this.runtime.keys()) this._clearAutomation(projectId);
+    this.pm2StartQueue.clear();
     this.runtime.clear();
     await this.pm2History.shutdown();
   }

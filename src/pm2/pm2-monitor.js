@@ -256,6 +256,30 @@ async function runPm2StartProject(
   return { stdout: String(stdout || ""), stderr: String(stderr || "") };
 }
 
+async function runPm2Delete(id) {
+  const target = String(Number(id));
+  if (!/^\d+$/.test(target)) throw new Error("A valid PM2 process id is required.");
+
+  const local = await runLocalPm2(["delete", target], { timeout: 20_000 });
+  if (local) return local;
+
+  if (process.platform === "win32") {
+    const command = `pm2 delete ${target}`;
+    const { stdout, stderr } = await execFileAsync(
+      process.env.ComSpec || "cmd.exe",
+      ["/d", "/s", "/c", command],
+      { windowsHide: true, timeout: 20_000, maxBuffer: MAX_BUFFER },
+    );
+    return { stdout: String(stdout || ""), stderr: String(stderr || "") };
+  }
+
+  const { stdout, stderr } = await execFileAsync("pm2", ["delete", target], {
+    timeout: 20_000,
+    maxBuffer: MAX_BUFFER,
+  });
+  return { stdout: String(stdout || ""), stderr: String(stderr || "") };
+}
+
 function unavailableFromError(error) {
   const text = `${error?.message || ""}\n${error?.stderr || ""}`.toLowerCase();
   return (
@@ -510,11 +534,25 @@ function aliasMatches(project, processInfo) {
   return aliases.includes(name) || aliases.includes(namespaced);
 }
 
+function projectRuntimeRoots(project) {
+  const roots = [project?.projectRoot, ...(Array.isArray(project?.pm2RuntimeRoots) ? project.pm2RuntimeRoots : [])]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return [...new Set(roots.map((value) => path.resolve(value)))];
+}
+
+function matchingRootLength(project, processInfo) {
+  let best = 0;
+  for (const root of projectRuntimeRoots(project)) {
+    if (isPathInside(root, processInfo.cwd) || isPathInside(root, processInfo.script)) {
+      best = Math.max(best, normalizedPath(root).length);
+    }
+  }
+  return best;
+}
+
 function pathMatches(project, processInfo) {
-  return (
-    isPathInside(project.projectRoot, processInfo.cwd) ||
-    isPathInside(project.projectRoot, processInfo.script)
-  );
+  return matchingRootLength(project, processInfo) > 0;
 }
 
 function summarizeProject(project, processes, available, checkedAt, error = null) {
@@ -553,6 +591,7 @@ class Pm2Monitor extends EventEmitter {
     this.runner = options.runner || runPm2Jlist;
     this.daemonPidProvider = options.daemonPidProvider || readPm2DaemonPid;
     this.actionRunner = options.actionRunner || runPm2Action;
+    this.deleteRunner = options.deleteRunner || ((id) => runPm2Delete(id));
     this.projectStartRunner = options.projectStartRunner || runPm2StartProject;
     this.gpuMonitor = options.gpuMonitor || new ProcessGpuMonitor(options.gpuOptions);
     this.logicalCpuCount = Math.max(1, Number(options.logicalCpuCount) || os.cpus().length || 1);
@@ -667,6 +706,27 @@ class Pm2Monitor extends EventEmitter {
       output: result?.stdout?.trim() || "",
       status,
     };
+  }
+
+  async deleteProcess(processInfo) {
+    if (!Number.isInteger(Number(processInfo?.id)))
+      throw new Error("The selected PM2 process has no valid id.");
+    this.markPlannedAction(processInfo, "delete");
+    const key = processIdentity(processInfo);
+    try {
+      const result = await this.deleteRunner(Number(processInfo.id));
+      if (this.actionDelayMs) await new Promise((resolve) => setTimeout(resolve, this.actionDelayMs));
+      const status = await this.refresh();
+      return {
+        action: "delete",
+        pm2Id: Number(processInfo.id),
+        output: result?.stdout?.trim() || "",
+        status,
+      };
+    } catch (error) {
+      this.plannedActions.delete(key);
+      throw error;
+    }
   }
 
   async startProjectFromEcosystem(project) {
@@ -899,7 +959,7 @@ class Pm2Monitor extends EventEmitter {
         const pathCandidates = enabledProjects
           .filter((project) => pathMatches(project, processInfo))
           .sort(
-            (a, b) => normalizedPath(b.projectRoot).length - normalizedPath(a.projectRoot).length,
+            (a, b) => matchingRootLength(b, processInfo) - matchingRootLength(a, processInfo),
           );
         if (pathCandidates[0]) {
           assigned.get(pathCandidates[0].id).push(processInfo);

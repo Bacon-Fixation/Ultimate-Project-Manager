@@ -212,6 +212,27 @@ requireAudit(
   "LAN Agent TLS/server timeout hardening is missing.",
 );
 
+
+const elevationPolicy = read("src/security/elevation.js");
+const dockerRuntimeMonitor = read("src/system/docker-runtime-monitor.js");
+requireAudit(
+  elevationPolicy.includes("createElevationChecker") &&
+    elevationPolicy.includes("Restart As Administrator") &&
+    elevationPolicy.includes("Chromium sandboxing"),
+  "Desktop/project elevation policy safeguards are missing.",
+);
+requireAudit(
+  dockerRuntimeMonitor.includes("inspectContainers") &&
+    dockerRuntimeMonitor.includes("healthStatus"),
+  "Docker container dependency readiness support is missing.",
+);
+requireAudit(
+  read("src/manager/backup-manager.js").includes("pm2RequiredContainers") &&
+    read("src/manager/backup-manager.js").includes("pm2RequireElevation") &&
+    read("src/manager/backup-manager.js").includes("_handlePm2QueuedStarts"),
+  "PM2 startup dependency/elevation gates are missing.",
+);
+
 const readme = read("README.md");
 requireAudit(
   readme.includes(`# Ultimate Project Manager v${pkg.version}`),

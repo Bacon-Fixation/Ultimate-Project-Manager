@@ -15,7 +15,9 @@ const desktopApi = Object.freeze({
   setNotifications: (enabled) => ipcRenderer.invoke("upm:set-notifications", Boolean(enabled)),
   showNotification: (options = {}) => ipcRenderer.invoke("upm:show-notification", options),
   restartApp: () => ipcRenderer.invoke("upm:restart-app"),
+  restartElevated: () => ipcRenderer.invoke("upm:restart-elevated"),
   showWindow: () => ipcRenderer.invoke("upm:show-window"),
+  openRemoteConnections: () => ipcRenderer.invoke("upm:open-remote-manager"),
   onCommand: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, command) => callback(command);

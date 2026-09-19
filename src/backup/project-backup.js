@@ -7,6 +7,7 @@ const path = require("path");
 const tar = require("tar");
 const { encryptFile, decryptFile, isEncryptedFile } = require("../security/backup-crypto");
 const { createIgnoreMatcher, createIncludeOverrideMatcher } = require("../filesystem/ignore-rules");
+const { canonicalPath, isPathInside } = require("../filesystem/path-boundary");
 const {
   atomicWriteJson,
   isRetryableFileError,
@@ -1392,16 +1393,24 @@ class ProjectBackup {
     const fullPath = await this.resolveBackup(fileName);
     const metadata = (await this.listBackups()).find((item) => item.file === fileName) || {};
     const target = path.resolve(destination);
-    if (relativeIfInside(this.projectRoot, target) !== null) {
-      throw new Error(
-        "Refusing to restore into the registered project tree. Choose a separate restore folder.",
-      );
-    }
-    if (relativeIfInside(this.backupDir, target) !== null) {
-      throw new Error(
-        "Refusing to restore into the project backup directory. Choose a separate restore folder.",
-      );
-    }
+    const assertSafeRestoreTarget = async () => {
+      const [canonicalProjectRoot, canonicalBackupDir, canonicalTarget] = await Promise.all([
+        canonicalPath(this.projectRoot),
+        canonicalPath(this.backupDir),
+        canonicalPath(target),
+      ]);
+      if (isPathInside(canonicalProjectRoot, canonicalTarget)) {
+        throw new Error(
+          "Refusing to restore into the registered project tree. Choose a separate restore folder.",
+        );
+      }
+      if (isPathInside(canonicalBackupDir, canonicalTarget)) {
+        throw new Error(
+          "Refusing to restore into the project backup directory. Choose a separate restore folder.",
+        );
+      }
+    };
+    await assertSafeRestoreTarget();
 
     const verification = await this.verifyBackup(fileName);
     if (!verification.valid) {
@@ -1416,6 +1425,7 @@ class ProjectBackup {
     }
 
     await fsp.mkdir(target, { recursive: true });
+    await assertSafeRestoreTarget();
     const readable = await this._prepareReadableArchive(fullPath, metadata);
     try {
       await tar.extract({

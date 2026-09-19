@@ -1,4 +1,4 @@
-# Ultimate Project Manager v0.10.10
+# Ultimate Project Manager v0.10.14
 
 Ultimate Project Manager (UPM) is a local desktop dashboard for managing, monitoring, backing up, and recovering multiple Node.js projects from one place.
 
@@ -17,6 +17,7 @@ Instead of relying on only Git, only PM2, or only a normal backup folder, UPM co
 - Native Electron desktop application
 - Multi-project dashboard
 - Automatic verified backups
+- Runnable backup build slots with PM2 hot-swap and automatic rollback
 - Optional secondary backup destinations
 - AES-256-GCM encrypted backups
 - Individual-file and full-project recovery
@@ -100,6 +101,7 @@ The Electron release adds:
 - Secure same-process desktop authentication
 - External links opened in the operating-system browser
 - Normal browser/LAN dashboard access when explicitly enabled
+- Saved **Remote UPM** desktop connections for opening and signing into another UPM host on the LAN without installing a separate client
 
 Installed desktop builds keep writable runtime data in the application's per-user data directory instead of modifying the installed program files.
 
@@ -108,6 +110,16 @@ Use:
 **More → Desktop → Open Data Folder**
 
 to open that location.
+
+### Remote UPM desktop connections
+
+The desktop app can also act as a client for another full UPM instance. Use **More → Desktop → Remote UPM Connections**, the **Remote UPM** application menu, or the tray menu to save a LAN UPM address and open it in a dedicated window.
+
+Remote windows intentionally do **not** receive the privileged local Electron bridge or the local desktop-trust token. Authentication, remote admin access, and remote filesystem access are still enforced by the UPM host being connected to. Saved connection profiles contain only a display name, URL, and whether the Electron login session should persist; UPM passwords are not stored in the profile.
+
+For the remote host, bind UPM to a LAN-accessible interface, enable `UPM_ALLOW_REMOTE_DASHBOARD=true`, and enable authentication before allowing remote administration. HTTPS is recommended because plain HTTP does not encrypt login credentials or session cookies on the LAN.
+
+This differs from a **LAN Remote Agent**: a Remote UPM connection opens another complete UPM dashboard, while a Remote Agent lets one central UPM operate selected project/PM2/backup functions on a machine that does not need to run the full dashboard.
 
 ---
 
@@ -128,8 +140,11 @@ Each project can have its own:
 - File and folder exclusions
 - Backup include overrides
 - PM2 process configuration
+- Runnable backup-build overlay paths and optional shared `node_modules`
 - PM2 auto-start behavior
-- Optional Docker startup gate
+- Optional Docker daemon startup gate
+- Named Docker container readiness dependencies
+- Optional Administrator/root requirement for project starts
 - Service-health checks
 - TODO / FIX / NOTE task list
 - Editor shortcut
@@ -138,6 +153,20 @@ Each project can have its own:
 Projects can also be discovered from parent folders containing `package.json` files.
 
 Project cards can be collapsed, and their state is remembered between visits.
+
+---
+
+# Runnable Backup Builds
+
+For local PM2-managed projects, a verified backup can be prepared as a **Build Slot** instead of being restored over the source tree. Open **Backups** and choose **Prepare Build** to materialize the archive into UPM's runtime cache, or choose **Run Build** to prepare and switch to it immediately.
+
+The **Build Slots** view shows every prepared runtime copy plus the production source tree. Switching builds replaces only the PM2 processes already matched to that project, launches the selected ecosystem from the chosen runtime root, verifies that PM2 actually used that root, and rolls back to the previous build when startup fails. Prepared builds can be reused later without extracting the archive again.
+
+By default UPM refreshes the live project's `.env` into a backup build immediately before launch. Additional relative files or folders such as `config.json` can be configured under **Edit Project → Runtime → Runnable backup builds**. When enabled, UPM also links the live project's `node_modules` into a build that does not already contain one; if package metadata differs between the backup and production source, UPM reports a dependency mismatch warning.
+
+The backup archive itself remains immutable. A prepared slot is a working runtime copy and may be changed by the application while it runs; use **Reset Build** from backup history to recreate that slot from the verified archive. Returning to **Production Source** does not delete prepared builds.
+
+Runnable backup builds are currently local-project only and require PM2 monitoring plus dashboard PM2 controls for the project. LAN Remote Agent projects continue to use their remote backup/PM2 workflow.
 
 ---
 
@@ -446,6 +475,10 @@ The gate can apply to:
 
 UPM considers Docker ready only after the Docker daemon responds successfully.
 
+Projects may also list **Required Docker containers**. Named dependencies imply Docker readiness automatically. Containers with a Docker healthcheck must report `healthy`; containers without one must be running. Manual **Start In PM2** requests are queued while the gate is waiting and expire after the project-configured startup-gate timeout.
+
+Projects that truly require elevated privileges may enable **Require an Administrator/root UPM session before this project may start**. UPM never stores a UAC/sudo password and never silently bypasses an OS elevation prompt. For PM2 inheritance, start UPM elevated before its PM2 daemon is created. On Linux, the Electron desktop is intentionally not relaunched as root because Electron recommends keeping Chromium process sandboxing enabled; use a deliberately elevated server/CLI session instead.
+
 LAN Remote Agents also report Docker status for their host.
 
 ---
@@ -539,9 +572,9 @@ Open **Tasks** from the project card to:
 
 Supported task types are:
 
-- **TODO** — normal work
-- **FIX** — bugs, broken behavior, and cleanup
-- **NOTE** — reminders and project notes
+- **TODO** - normal work
+- **FIX** - bugs, broken behavior, and cleanup
+- **NOTE** - reminders and project notes
 
 The project scanner can discover markers such as:
 
@@ -944,12 +977,12 @@ Do **not** expose Ultimate Project Manager directly to the public internet unles
 
 UPM can make use of several external tools when they are available:
 
-- **PM2** — process monitoring and control
-- **Git** — repository detection and additional recovery history
-- **Docker / Docker Desktop** — runtime monitoring and startup gating
-- **NVIDIA / Windows GPU telemetry** — per-process GPU usage
-- **VS Code and other editors** — local project launching
-- **GitHub repositories** — repository shortcuts
+- **PM2** - process monitoring and control
+- **Git** - repository detection and additional recovery history
+- **Docker / Docker Desktop** - runtime monitoring and startup gating
+- **NVIDIA / Windows GPU telemetry** - per-process GPU usage
+- **VS Code and other editors** - local project launching
+- **GitHub repositories** - repository shortcuts
 
 These integrations are optional. UPM's core project, backup, recovery, task, storage, and file-management features can still be used without all of them.
 
@@ -967,7 +1000,6 @@ Keep copies of anything that cannot easily be recreated, especially:
 Never assume Git contains ignored files, local configuration, secrets, or files that have not been committed.
 
 ---
-
 
 **Much Love,**  
 **-Bacon**

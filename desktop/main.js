@@ -3,6 +3,7 @@
 const crypto = require("crypto");
 const fsp = require("fs/promises");
 const path = require("path");
+const { pathToFileURL } = require("url");
 const {
   app,
   BrowserWindow,
@@ -10,7 +11,9 @@ const {
   ipcMain,
   Menu,
   nativeImage,
+  net,
   Notification,
+  session,
   shell,
   Tray,
 } = require("electron");
@@ -22,18 +25,35 @@ const {
   recoverLastKnownGoodEnv,
 } = require("../src/config/settings-recovery");
 const { DesktopSettingsStore } = require("./desktop-settings");
+const {
+  MAX_CONNECTIONS,
+  normalizeRemoteConnection,
+  remoteSessionPartition,
+  sameRemoteOrigin,
+} = require("./remote-connections");
+const {
+  createElevationChecker,
+  elevatedRelaunchSupport,
+  relaunchElevated,
+} = require("../src/security/elevation");
 
 const PRODUCT_NAME = "Ultimate Project Manager";
 const PROJECT_REPOSITORY_URL = "https://github.com/Bacon-Fixation/Ultimate-Project-Manager";
 const KOFI_URL = "https://ko-fi.com/baconfixation";
 const DESKTOP_HEADER = "X-UPM-Desktop-Token";
+const LOCAL_DASHBOARD_PARTITION = "upm-local-dashboard";
+const REMOTE_MANAGER_PARTITION = "upm-remote-manager";
 
 let mainWindow = null;
+let remoteManagerWindow = null;
+const remoteWindows = new Map();
 let tray = null;
 let serverState = null;
 let settingsStore = null;
 let trayRefreshTimer = null;
 let quitting = false;
+let desktopElevationStatus = null;
+const elevationChecker = createElevationChecker();
 
 function dashboardUrl(host, port) {
   const normalized = String(host || "")
@@ -216,6 +236,291 @@ function openExternalHttp(value) {
   return shell.openExternal(externalHttpUrl(value));
 }
 
+function remoteConnections() {
+  return settingsStore?.get().remoteConnections || [];
+}
+
+function remoteConnectionById(id) {
+  const value = String(id || "").trim();
+  return remoteConnections().find((connection) => connection.id === value) || null;
+}
+
+function requireRemoteConnection(id) {
+  const connection = remoteConnectionById(id);
+  if (!connection) throw new Error("The selected Remote UPM connection no longer exists.");
+  return connection;
+}
+
+function trustedRemoteManagerSender(event) {
+  if (!remoteManagerWindow || remoteManagerWindow.isDestroyed()) return false;
+  if (event.sender !== remoteManagerWindow.webContents) return false;
+  if (!event.senderFrame || event.senderFrame.parent !== null) return false;
+  try {
+    const senderUrl = new URL(event.senderFrame.url);
+    const expected = pathToFileURL(path.join(__dirname, "remote-connect.html"));
+    return senderUrl.href === expected.href;
+  } catch {
+    return false;
+  }
+}
+
+function requireRemoteManagerSender(event) {
+  if (!trustedRemoteManagerSender(event))
+    throw new Error("Remote UPM manager request was rejected.");
+}
+
+async function clearRemoteSession(connection) {
+  try {
+    const partition = remoteSessionPartition(connection);
+    await session.fromPartition(partition).clearStorageData();
+  } catch (error) {
+    console.warn(`Ultimate Project Manager: unable to clear Remote UPM session: ${error.message}`);
+  }
+}
+
+async function saveRemoteConnection(input = {}) {
+  const next = normalizeRemoteConnection(input);
+  const connections = remoteConnections();
+  const duplicate = connections.find(
+    (connection) =>
+      connection.id !== next.id && connection.url.toLowerCase() === next.url.toLowerCase(),
+  );
+  if (duplicate) throw new Error(`A Remote UPM connection for ${duplicate.url} already exists.`);
+
+  const index = connections.findIndex((connection) => connection.id === next.id);
+  const previous = index >= 0 ? connections[index] : null;
+  if (index >= 0) connections[index] = next;
+  else {
+    if (connections.length >= MAX_CONNECTIONS)
+      throw new Error(`Remote UPM supports up to ${MAX_CONNECTIONS} saved connections.`);
+    connections.push(next);
+  }
+
+  if (
+    previous &&
+    (previous.url !== next.url || remoteSessionPartition(previous) !== remoteSessionPartition(next))
+  ) {
+    await clearRemoteSession(previous);
+  }
+
+  const settings = await settingsStore.update({ remoteConnections: connections });
+  rebuildTrayMenu();
+  createApplicationMenu();
+  return { connection: next, connections: settings.remoteConnections };
+}
+
+async function removeRemoteConnection(id) {
+  const connection = requireRemoteConnection(id);
+  const existingWindow = remoteWindows.get(connection.id);
+  if (existingWindow && !existingWindow.isDestroyed()) existingWindow.close();
+  remoteWindows.delete(connection.id);
+  await clearRemoteSession(connection);
+  const settings = await settingsStore.update({
+    remoteConnections: remoteConnections().filter((item) => item.id !== connection.id),
+  });
+  rebuildTrayMenu();
+  createApplicationMenu();
+  return settings.remoteConnections;
+}
+
+async function probeRemoteConnection(input = {}) {
+  const connection = normalizeRemoteConnection(input);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6_000);
+  timeout.unref?.();
+  let response;
+  try {
+    response = await net.fetch(`${connection.url}/api/auth/status`, {
+      method: "GET",
+      redirect: "error",
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error(`Timed out connecting to ${connection.url}.`);
+    throw new Error(`Unable to connect to ${connection.url}: ${error.message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {}
+
+  if (!response.ok) {
+    if (response.status === 403)
+      throw new Error(
+        "The server is reachable, but Remote Dashboard access is disabled on that UPM host.",
+      );
+    throw new Error(payload?.error || `Remote UPM returned HTTP ${response.status}.`);
+  }
+  if (!payload || typeof payload.auth !== "object")
+    throw new Error(
+      "The server responded, but it does not appear to be a compatible UPM dashboard.",
+    );
+
+  return {
+    ok: true,
+    url: connection.url,
+    authEnabled: payload.auth.enabled === true,
+    authenticated: payload.auth.authenticated === true,
+    secure: connection.url.startsWith("https://"),
+  };
+}
+
+function remoteWindowTitle(connection) {
+  return `${connection.name} - Remote UPM`;
+}
+
+async function openRemoteConnection(id) {
+  const connection = requireRemoteConnection(id);
+  const existing = remoteWindows.get(connection.id);
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore();
+    existing.show();
+    existing.focus();
+    return { opened: true, reused: true, id: connection.id };
+  }
+
+  const remoteWindow = new BrowserWindow({
+    title: remoteWindowTitle(connection),
+    width: 1480,
+    height: 940,
+    minWidth: 920,
+    minHeight: 640,
+    show: false,
+    autoHideMenuBar: true,
+    backgroundColor: "#0b0b0f",
+    icon: appIconPath(serverState.rootDir),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      partition: remoteSessionPartition(connection),
+    },
+  });
+  remoteWindows.set(connection.id, remoteWindow);
+  remoteWindow.removeMenu();
+
+  remoteWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const parsed = new URL(url);
+      if (["http:", "https:"].includes(parsed.protocol))
+        openExternalHttp(parsed.toString()).catch(console.error);
+    } catch {}
+    return { action: "deny" };
+  });
+  const guardRemoteNavigation = (event, url) => {
+    if (sameRemoteOrigin(connection, url)) return;
+    event.preventDefault();
+    try {
+      const parsed = new URL(url);
+      if (["http:", "https:"].includes(parsed.protocol))
+        openExternalHttp(parsed.toString()).catch(console.error);
+    } catch {}
+  };
+  remoteWindow.webContents.on("will-navigate", guardRemoteNavigation);
+  remoteWindow.webContents.on("will-redirect", guardRemoteNavigation);
+  remoteWindow.webContents.on("page-title-updated", (event) => {
+    event.preventDefault();
+    remoteWindow.setTitle(remoteWindowTitle(connection));
+  });
+  remoteWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
+      if (!isMainFrame || errorCode === -3) return;
+      dialog
+        .showMessageBox(remoteWindow, {
+          type: "error",
+          title: "Remote UPM Connection Failed",
+          message: `Unable to load ${connection.name}.`,
+          detail: `${errorDescription} (${errorCode})\n${validatedUrl || connection.url}`,
+          buttons: ["Close"],
+          noLink: true,
+        })
+        .catch(() => {});
+    },
+  );
+  remoteWindow.on("closed", () => remoteWindows.delete(connection.id));
+  remoteWindow.on("ready-to-show", () => remoteWindow.show());
+
+  try {
+    await remoteWindow.loadURL(connection.url);
+  } catch (error) {
+    remoteWindows.delete(connection.id);
+    if (!remoteWindow.isDestroyed()) remoteWindow.destroy();
+    throw new Error(`Unable to open ${connection.name}: ${error.message}`);
+  }
+  return { opened: true, reused: false, id: connection.id };
+}
+
+async function openRemoteConnectionManager() {
+  if (remoteManagerWindow && !remoteManagerWindow.isDestroyed()) {
+    if (remoteManagerWindow.isMinimized()) remoteManagerWindow.restore();
+    remoteManagerWindow.show();
+    remoteManagerWindow.focus();
+    return;
+  }
+
+  remoteManagerWindow = new BrowserWindow({
+    title: "Remote UPM Connections",
+    width: 900,
+    height: 760,
+    minWidth: 660,
+    minHeight: 560,
+    show: false,
+    parent: mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined,
+    modal: false,
+    autoHideMenuBar: true,
+    backgroundColor: "#0b0b0f",
+    icon: appIconPath(serverState.rootDir),
+    webPreferences: {
+      preload: path.join(__dirname, "remote-connect-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      partition: REMOTE_MANAGER_PARTITION,
+    },
+  });
+  remoteManagerWindow.removeMenu();
+  remoteManagerWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  remoteManagerWindow.webContents.on("will-navigate", (event, url) => {
+    const expected = pathToFileURL(path.join(__dirname, "remote-connect.html")).toString();
+    if (url === expected) return;
+    event.preventDefault();
+  });
+  remoteManagerWindow.on("closed", () => {
+    remoteManagerWindow = null;
+  });
+  remoteManagerWindow.on("ready-to-show", () => remoteManagerWindow.show());
+  await remoteManagerWindow.loadFile(path.join(__dirname, "remote-connect.html"));
+}
+
+function remoteConnectionsMenu() {
+  const connections = remoteConnections();
+  return [
+    {
+      label: "Connect / Manage Remote UPMs…",
+      accelerator: "CmdOrCtrl+Shift+R",
+      click: () => openRemoteConnectionManager().catch(console.error),
+    },
+    { type: "separator" },
+    ...(connections.length
+      ? connections.map((connection) => ({
+          label: connection.name,
+          sublabel: connection.url,
+          click: () =>
+            openRemoteConnection(connection.id).catch((error) =>
+              dialog.showErrorBox("Remote UPM Connection Failed", error.message),
+            ),
+        }))
+      : [{ label: "No saved Remote UPM connections", enabled: false }]),
+  ];
+}
+
 function launchAtLoginSupported() {
   return app.isPackaged && ["win32", "darwin"].includes(process.platform);
 }
@@ -277,6 +582,10 @@ function rebuildTrayMenu() {
         label: "Open Dashboard In Browser",
         click: () => openExternalHttp(serverState.url).catch(console.error),
       },
+      {
+        label: "Remote UPMs",
+        submenu: remoteConnectionsMenu(),
+      },
       { type: "separator" },
       {
         label: "Launch At Login",
@@ -296,6 +605,19 @@ function rebuildTrayMenu() {
         type: "checkbox",
         checked: settings.notifications,
         click: (item) => updateDesktopSetting({ notifications: item.checked }),
+      },
+      {
+        label:
+          elevatedRelaunchSupport({ platform: process.platform, packaged: app.isPackaged }).label ||
+          "Restart Elevated",
+        enabled:
+          desktopElevationStatus?.elevated !== true &&
+          elevatedRelaunchSupport({ platform: process.platform, packaged: app.isPackaged })
+            .supported,
+        click: () =>
+          requestElevatedRestart().catch((error) =>
+            dialog.showErrorBox(`${PRODUCT_NAME} elevation failed`, error.message),
+          ),
       },
       { type: "separator" },
       {
@@ -444,7 +766,25 @@ function createApplicationMenu() {
           checked: settings.notifications,
           click: (item) => updateDesktopSetting({ notifications: item.checked }),
         },
+        { type: "separator" },
+        {
+          label:
+            elevatedRelaunchSupport({ platform: process.platform, packaged: app.isPackaged })
+              .label || "Restart Elevated",
+          enabled:
+            desktopElevationStatus?.elevated !== true &&
+            elevatedRelaunchSupport({ platform: process.platform, packaged: app.isPackaged })
+              .supported,
+          click: () =>
+            requestElevatedRestart().catch((error) =>
+              dialog.showErrorBox(`${PRODUCT_NAME} elevation failed`, error.message),
+            ),
+        },
       ],
+    },
+    {
+      label: "Remote UPM",
+      submenu: remoteConnectionsMenu(),
     },
     {
       label: "Help",
@@ -468,6 +808,48 @@ function createApplicationMenu() {
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+async function requestElevatedRestart() {
+  desktopElevationStatus = await elevationChecker(true);
+  if (desktopElevationStatus.elevated) return { restarting: false, alreadyElevated: true };
+
+  const support = elevatedRelaunchSupport({
+    platform: process.platform,
+    packaged: app.isPackaged,
+  });
+  if (!support.supported) throw new Error(support.reason);
+
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: "warning",
+    title: `${PRODUCT_NAME} Elevated Restart`,
+    message: `Restart ${PRODUCT_NAME} with elevated privileges?`,
+    detail:
+      "The operating system will ask you to approve elevation. UPM does not save or receive your administrator/root password. Projects configured to require elevation will remain blocked unless the elevated UPM/PM2 session is active.",
+    buttons: [support.label || "Restart Elevated", "Cancel"],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (result.response !== 0) return { restarting: false, cancelled: true };
+
+  app.releaseSingleInstanceLock?.();
+  try {
+    await relaunchElevated({
+      platform: process.platform,
+      executable: process.execPath,
+      packaged: app.isPackaged,
+    });
+  } catch (error) {
+    app.requestSingleInstanceLock();
+    throw error;
+  }
+
+  setImmediate(() => {
+    quitting = true;
+    app.quit();
+  });
+  return { restarting: true };
 }
 
 function registerIpcHandlers() {
@@ -502,8 +884,9 @@ function registerIpcHandlers() {
     await openExternalHttp(url);
     return { ok: true };
   });
-  ipcMain.handle("upm:get-desktop-settings", (event) => {
+  ipcMain.handle("upm:get-desktop-settings", async (event) => {
     requireTrustedIpcSender(event);
+    desktopElevationStatus = await elevationChecker();
     return {
       ...settingsStore.get(),
       packaged: app.isPackaged,
@@ -511,6 +894,11 @@ function registerIpcHandlers() {
       dataDir: serverState.dataDir,
       envPath: serverState.envPath,
       dashboardUrl: serverState.url,
+      elevation: desktopElevationStatus,
+      elevationRelaunch: elevatedRelaunchSupport({
+        platform: process.platform,
+        packaged: app.isPackaged,
+      }),
     };
   });
   ipcMain.handle("upm:set-launch-at-login", (event, enabled) => {
@@ -537,6 +925,10 @@ function registerIpcHandlers() {
     notification.show();
     return { shown: true };
   });
+  ipcMain.handle("upm:restart-elevated", async (event) => {
+    requireTrustedIpcSender(event);
+    return requestElevatedRestart();
+  });
   ipcMain.handle("upm:restart-app", (event) => {
     requireTrustedIpcSender(event);
     setImmediate(() => {
@@ -549,6 +941,36 @@ function registerIpcHandlers() {
   ipcMain.handle("upm:show-window", (event) => {
     requireTrustedIpcSender(event);
     showMainWindow();
+    return { ok: true };
+  });
+  ipcMain.handle("upm:open-remote-manager", async (event) => {
+    requireTrustedIpcSender(event);
+    await openRemoteConnectionManager();
+    return { ok: true };
+  });
+  ipcMain.handle("upm:remote-list", (event) => {
+    requireRemoteManagerSender(event);
+    return remoteConnections();
+  });
+  ipcMain.handle("upm:remote-save", async (event, connection) => {
+    requireRemoteManagerSender(event);
+    return saveRemoteConnection(connection);
+  });
+  ipcMain.handle("upm:remote-remove", async (event, id) => {
+    requireRemoteManagerSender(event);
+    return removeRemoteConnection(id);
+  });
+  ipcMain.handle("upm:remote-probe", async (event, connection) => {
+    requireRemoteManagerSender(event);
+    return probeRemoteConnection(connection);
+  });
+  ipcMain.handle("upm:remote-connect", async (event, id) => {
+    requireRemoteManagerSender(event);
+    return openRemoteConnection(id);
+  });
+  ipcMain.handle("upm:remote-manager-close", (event) => {
+    requireRemoteManagerSender(event);
+    remoteManagerWindow?.close();
     return { ok: true };
   });
 }
@@ -570,6 +992,7 @@ async function createMainWindow() {
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
+      partition: LOCAL_DASHBOARD_PARTITION,
     },
   });
 
@@ -582,7 +1005,7 @@ async function createMainWindow() {
     } catch {}
     return { action: "deny" };
   });
-  mainWindow.webContents.on("will-navigate", (event, url) => {
+  const guardMainNavigation = (event, url) => {
     try {
       if (new URL(url).origin === new URL(serverState.url).origin) return;
     } catch {}
@@ -592,7 +1015,9 @@ async function createMainWindow() {
       if (["http:", "https:"].includes(parsed.protocol))
         openExternalHttp(parsed.toString()).catch(console.error);
     } catch {}
-  });
+  };
+  mainWindow.webContents.on("will-navigate", guardMainNavigation);
+  mainWindow.webContents.on("will-redirect", guardMainNavigation);
   mainWindow.on("close", (event) => {
     if (quitting || !settingsStore.get().closeToTray) return;
     event.preventDefault();
@@ -644,6 +1069,7 @@ async function bootstrap() {
   settingsStore = new DesktopSettingsStore(app.getPath("userData"));
   await settingsStore.load();
   applyLaunchAtLogin(settingsStore.get().launchAtLogin);
+  desktopElevationStatus = await elevationChecker(true);
   serverState = await startBackend();
   enableActivityNotifications();
   registerIpcHandlers();

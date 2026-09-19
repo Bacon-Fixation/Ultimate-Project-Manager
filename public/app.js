@@ -2750,13 +2750,15 @@ function renderProjects() {
         <div class="project-meta">
           <div class="meta-row"><span class="meta-label">Host</span><span>${project.executionTarget === "lan" ? `<span class="badge ${project.pm2?.available ? "success" : "warning"}">LAN</span> ${escapeHtml(project.remoteAgent?.name || project.remoteAgentId || "Remote agent")}` : '<span class="badge">Local</span> This PC'}</span></div>
           <div class="meta-row"><span class="meta-label">Project</span><span class="path">${escapeHtml(project.projectRoot)}</span></div>
+          ${project.executionTarget === "lan" ? "" : `<div class="meta-row"><span class="meta-label">Active build</span><span>${project.buildRuntime?.active?.type === "slot" ? `<span class="badge success">Backup Build</span> ${escapeHtml(project.buildRuntime.active.backupCreatedAt ? formatDate(project.buildRuntime.active.backupCreatedAt) : project.buildRuntime.active.backupFile || project.buildRuntime.active.slotId)} · ${escapeHtml(project.buildRuntime.preparedCount || 0)} prepared` : `<span class="badge">Production Source</span> · ${escapeHtml(project.buildRuntime?.preparedCount || 0)} prepared`}</span></div>`}
           <div class="meta-row"><span class="meta-label">Editor</span><span>${project.executionTarget === "lan" ? "Remote host · dashboard launch disabled" : escapeHtml(project.editorInfo?.label || project.editor || "Server default")}</span></div>
           <div class="meta-row"><span class="meta-label">Repository</span><span>${project.executionTarget === "lan" && !project.repositoryUrl ? "Remote auto-detect unavailable" : project.repositoryUrl ? escapeHtml(project.repositoryUrl) : "Auto-detect Git origin"}</span></div>
           <div class="meta-row"><span class="meta-label">Primary</span><span class="path">${escapeHtml(project.backupDirResolved)}</span></div>
           <div class="meta-row"><span class="meta-label">Secondary</span><span class="path">${escapeHtml(project.backupDirSecondaryResolved || "Not configured")}</span></div>
           <div class="meta-row"><span class="meta-label">Encryption</span><span>${project.backupEncryptionEnabled ? (project.executionTarget === "lan" ? '<span class="badge success">Agent-Managed AES-256-GCM</span>' : `<span class="badge ${project.backupEncryptionConfigured ? "success" : "error"}">${project.backupEncryptionConfigured ? "AES-256-GCM Enabled" : "Enabled · Key Missing"}</span>`) : '<span class="badge">Off</span>'}</span></div>
           <div class="meta-row"><span class="meta-label">Delta journal</span><span>${project.deltaJournalEnabled ? `<span class="badge success">On</span> ${escapeHtml(project.deltaJournalRetentionDays)}d · ${escapeHtml(project.deltaJournalMaxEntries)} entries · ${escapeHtml(project.deltaJournalMaxStorageMB)} MB` : '<span class="badge">Off</span>'}</span></div>
-          <div class="meta-row"><span class="meta-label">PM2 auto-start</span><span>${project.pm2AutoStart ? `<span class="badge success">Enabled</span> ${escapeHtml(project.pm2EcosystemFile || "ecosystem.config.js")}${project.pm2EcosystemAppName ? ` · ${escapeHtml(project.pm2EcosystemAppName)}` : ""}${project.pm2WaitForDocker ? ' · <span class="badge">Wait For Docker</span>' : ""}${project.runtime?.pm2AutoStart?.state === "suppressed" ? ' · <span class="badge warning">Manual Stop · Suppressed</span>' : project.runtime?.pm2AutoStart?.state === "waiting-for-docker" ? ' · <span class="badge warning">Waiting For Docker</span>' : project.runtime?.pm2AutoStart?.state === "failed" ? ` · <span class="badge error">Last Start Failed</span>` : ""}` : '<span class="badge">Off</span>'}</span></div>
+          <div class="meta-row"><span class="meta-label">PM2 auto-start</span><span>${project.pm2AutoStart ? `<span class="badge success">Enabled</span> ${escapeHtml(project.pm2EcosystemFile || "ecosystem.config.js")}${project.pm2EcosystemAppName ? ` · ${escapeHtml(project.pm2EcosystemAppName)}` : ""}${project.pm2WaitForDocker ? ' · <span class="badge">Wait For Docker</span>' : ""}${project.pm2RequireElevation ? ' · <span class="badge warning">Admin/Root Required</span>' : ""}${project.pm2RequiredContainers?.length ? ` · <span class="badge">${escapeHtml(project.pm2RequiredContainers.length)} Container Gate${project.pm2RequiredContainers.length === 1 ? "" : "s"}</span>` : ""}${project.runtime?.pm2AutoStart?.state === "suppressed" ? ' · <span class="badge warning">Manual Stop · Suppressed</span>' : ["waiting-for-docker", "waiting-for-containers", "elevation-required"].includes(project.runtime?.pm2AutoStart?.state) ? ` · <span class="badge warning">${escapeHtml(project.runtime.pm2AutoStart.state === "waiting-for-containers" ? "Waiting For Containers" : project.runtime.pm2AutoStart.state === "elevation-required" ? "Waiting For Admin/Root" : "Waiting For Docker")}</span>` : project.runtime?.pm2AutoStart?.state === "failed" ? ` · <span class="badge error">Last Start Failed</span>` : ""}` : '<span class="badge">Off</span>'}</span></div>
+          <div class="meta-row"><span class="meta-label">Startup gates</span><span>${project.runtime?.pm2StartGate ? `<span class="badge warning">${project.runtime.pm2StartGate.queued ? "Queued" : "Blocked"}</span> ${escapeHtml(project.runtime.pm2StartGate.message || project.runtime.pm2StartGate.state || "Waiting")}` : project.pm2RequiredContainers?.length ? `${escapeHtml(project.pm2RequiredContainers.join(", "))} · timeout ${escapeHtml(project.pm2StartupGateTimeoutSeconds || 300)}s` : project.pm2RequireElevation ? "Administrator/root session required" : project.pm2WaitForDocker ? "Docker daemon readiness required" : "None"}</span></div>
           <div class="meta-row"><span class="meta-label">Docker runtime</span><span>${project.dockerRuntime?.daemonReady ? `<span class="badge success">Ready</span> ${escapeHtml(project.dockerRuntime.runtime || "Docker")}${project.dockerRuntime.serverVersion ? ` · v${escapeHtml(project.dockerRuntime.serverVersion)}` : ""}` : project.dockerRuntime?.running ? `<span class="badge warning">Starting</span> ${escapeHtml(project.dockerRuntime.message || "Waiting for daemon")}` : project.dockerRuntime?.checkedAt ? `<span class="badge error">Stopped</span> ${escapeHtml(project.dockerRuntime.runtime || "Docker")}` : '<span class="badge">Unavailable</span>'}</span></div>
           <div class="meta-row"><span class="meta-label">Watcher</span><span>${project.watch ? `Every ${project.intervalSeconds}s` : "Disabled"}</span></div>
           <div class="meta-row"><span class="meta-label">Schedule</span><span>${escapeHtml(project.scheduleDescription || "Disabled")}</span></div>
@@ -2790,7 +2792,7 @@ function renderProjects() {
                 <button type="button" class="button small" data-action="inspect" data-upm-icon="file-tools">Check Changes</button>
                 ${project.executionTarget === "lan" ? "" : '<button type="button" class="button small" data-action="diff" data-upm-icon="file-tools">Diff</button><button type="button" class="button small" data-action="feature-pack" data-upm-icon="feature-packs">Export Changes</button>'}
                 <button type="button" class="button small" data-action="history" data-upm-icon="backups">Backups</button>
-                ${project.executionTarget === "lan" ? "" : '<button type="button" class="button small" data-action="dependencies" data-upm-icon="updates">Dependencies</button>'}
+                ${project.executionTarget === "lan" ? "" : '<button type="button" class="button small" data-action="build-slots" data-upm-icon="pm2">Build Slots</button><button type="button" class="button small" data-action="dependencies" data-upm-icon="updates">Dependencies</button>'}
               </div>
               ${project.executionTarget === "lan" ? '<div class="action-menu-group"><span class="action-menu-label">LAN agent</span><span class="muted">Backups and PM2 status execute on the remote PC. Source tools remain local-only.</span></div>' : '<div class="action-menu-group"><span class="action-menu-label">Recovery & tools</span><button type="button" class="button small" data-action="recovery" data-upm-icon="recovery">Recovery</button><button type="button" class="button small" data-action="journal" data-upm-icon="journal">Journal</button><button type="button" class="button small" data-action="file-tools" data-upm-icon="file-tools">File Tools</button></div>'}
               <div class="action-menu-group">
@@ -4812,10 +4814,15 @@ function updateExecutionHostFields() {
   $("#pm2ControlsEnabled").disabled = remote;
   $("#pm2AutoStart").disabled = remote;
   $("#pm2WaitForDocker").disabled = remote;
+  $("#pm2RequireElevation").disabled = remote;
+  $("#pm2RequiredContainers").disabled = remote;
+  $("#pm2StartupGateTimeoutSeconds").disabled = remote;
   if (remote) {
     $("#pm2ControlsEnabled").checked = false;
     $("#pm2AutoStart").checked = false;
     $("#pm2WaitForDocker").checked = false;
+    $("#pm2RequireElevation").checked = false;
+    $("#pm2RequiredContainers").value = "";
     $("#backupEncryptionState").innerHTML =
       '<span class="badge success">Agent-Managed</span> Encrypted remote backups use <code>UPM_AGENT_BACKUP_ENCRYPTION_KEY</code> on the selected LAN PC; the key never crosses the network.';
   } else {
@@ -4965,9 +4972,14 @@ function openProjectDialog(project = null) {
   $("#pm2ControlsEnabled").checked = project?.pm2ControlsEnabled ?? false;
   $("#pm2AutoStart").checked = project?.pm2AutoStart ?? false;
   $("#pm2WaitForDocker").checked = project?.pm2WaitForDocker ?? false;
+  $("#pm2RequireElevation").checked = project?.pm2RequireElevation ?? false;
+  $("#pm2RequiredContainers").value = (project?.pm2RequiredContainers || []).join("\n");
+  $("#pm2StartupGateTimeoutSeconds").value = project?.pm2StartupGateTimeoutSeconds || 300;
   $("#pm2EcosystemFile").value = project?.pm2EcosystemFile || "ecosystem.config.js";
   $("#pm2EcosystemAppName").value = project?.pm2EcosystemAppName || "";
   $("#pm2ProcessNames").value = (project?.pm2ProcessNames || []).join("\n");
+  $("#buildSlotOverlayPaths").value = (project?.buildSlotOverlayPaths || [".env"]).join("\n");
+  $("#buildSlotLinkNodeModules").checked = project?.buildSlotLinkNodeModules ?? true;
   const serviceHealth = project?.serviceHealth || {};
   const redis = projectServiceConfig(project, "redis", "redis");
   const mariadb = projectServiceConfig(project, "mariadb", "mariadb");
@@ -5035,12 +5047,23 @@ async function saveProject(event) {
     pm2ControlsEnabled: $("#pm2ControlsEnabled").checked,
     pm2AutoStart: $("#pm2AutoStart").checked,
     pm2WaitForDocker: $("#pm2WaitForDocker").checked,
+    pm2RequireElevation: $("#pm2RequireElevation").checked,
+    pm2RequiredContainers: $("#pm2RequiredContainers")
+      .value.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean),
+    pm2StartupGateTimeoutSeconds: Number($("#pm2StartupGateTimeoutSeconds").value),
     pm2EcosystemFile: $("#pm2EcosystemFile").value.trim() || "ecosystem.config.js",
     pm2EcosystemAppName: $("#pm2EcosystemAppName").value.trim() || null,
     pm2ProcessNames: $("#pm2ProcessNames")
       .value.split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean),
+    buildSlotOverlayPaths: $("#buildSlotOverlayPaths")
+      .value.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean),
+    buildSlotLinkNodeModules: $("#buildSlotLinkNodeModules").checked,
     serviceHealth,
     extraExcludes: $("#extraExcludes")
       .value.split(/\r?\n/)
@@ -5107,20 +5130,48 @@ async function showBackups(project) {
   state.selectedBackupProject = project.id;
   $("#backupsTitle").textContent = `${project.name} backups`;
   $("#backupsList").innerHTML = '<p class="muted">Loading…</p>';
+  $("#buildSlotsBtn").hidden = project.executionTarget === "lan";
   if (!$("#backupsDialog").open) $("#backupsDialog").showModal();
   try {
-    const data = await api(`/api/projects/${project.id}/backups`);
+    const [data, buildData] = await Promise.all([
+      api(`/api/projects/${project.id}/backups`),
+      project.executionTarget === "lan"
+        ? Promise.resolve({ builds: { slots: [], summary: null } })
+        : api(`/api/projects/${project.id}/build-slots`).catch((error) => ({
+            builds: { slots: [], summary: null },
+            buildSlotsError: error.message || "Build-slot access unavailable.",
+          })),
+    ]);
+    const buildSlotsAvailable = !buildData.buildSlotsError;
+    $("#buildSlotsBtn").hidden = project.executionTarget === "lan" || !buildSlotsAvailable;
+    const slots = buildData.builds?.slots || [];
+    const activeSlotId = buildData.builds?.summary?.active?.slotId || null;
+    const slotsByBackup = new Map();
+    for (const slot of slots) {
+      const list = slotsByBackup.get(slot.backupFile) || [];
+      list.push(slot);
+      slotsByBackup.set(slot.backupFile, list);
+    }
     $("#backupsList").innerHTML = data.backups.length
       ? data.backups
           .map((backup) => {
             const c = backup.changes || {};
+            const buildSlots = slotsByBackup.get(backup.file) || [];
+            const buildBadge = buildSlots.length
+              ? `<span class="badge ${buildSlots.some((slot) => slot.slotId === activeSlotId) ? "success" : ""}">${buildSlots.some((slot) => slot.slotId === activeSlotId) ? "Running Build" : "Prepared Build"}</span>`
+              : "";
+            const buildActions =
+              project.executionTarget === "lan" || !buildSlotsAvailable
+                ? ""
+                : `<button type="button" class="button small" data-prepare-build data-reset-build="${buildSlots.length ? "true" : "false"}">${buildSlots.length ? "Reset Build" : "Prepare Build"}</button><button type="button" class="button primary small" data-run-build>Run Build</button>`;
             return `<div class="backup-row" data-file="${escapeHtml(backup.file)}">
         <div class="backup-info">
-          <div class="backup-title-line"><div class="backup-name">${escapeHtml(backup.file)}</div>${backup.encrypted ? '<span class="badge success">AES-256-GCM</span>' : '<span class="badge">Plain</span>'}${verificationBadge(backup)}</div>
+          <div class="backup-title-line"><div class="backup-name">${escapeHtml(backup.file)}</div>${backup.encrypted ? '<span class="badge success">AES-256-GCM</span>' : '<span class="badge">Plain</span>'}${verificationBadge(backup)}${buildBadge}</div>
           <div class="backup-meta">${escapeHtml(formatDate(backup.createdAt))} · ${backup.fileCount ?? "-"} files · ${backup.copyCount ?? 1}/${backup.configuredCopies ?? 1} copies · ${formatBytes(backup.totalStoredBytes ?? backup.size)} stored · +${c.added?.length || 0} ~${c.modified?.length || 0} -${c.deleted?.length || 0}${backup.encrypted ? " · encrypted" : " · unencrypted"}${backup.forced ? " · forced" : ""}</div>
           <div class="backup-copy-list">${renderBackupCopies(backup)}</div>
         </div>
         <div class="backup-actions">
+          ${buildActions}
           <button type="button" class="button small" data-verify-backup>Verify</button>
           <button type="button" class="button small" data-restore-backup>Restore</button>
           <button type="button" class="button danger small" data-delete-backup>Delete</button>
@@ -5131,6 +5182,46 @@ async function showBackups(project) {
       : '<div class="empty">No backups yet.</div>';
   } catch (error) {
     $("#backupsList").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function buildSlotLabel(slot) {
+  return slot.backupCreatedAt
+    ? `${formatDate(slot.backupCreatedAt)} · ${slot.backupFile}`
+    : slot.backupFile || slot.slotId;
+}
+
+async function showBuildSlots(project) {
+  if (!project || project.executionTarget === "lan") return;
+  state.selectedBackupProject = project.id;
+  $("#buildSlotsTitle").textContent = `${project.name} build slots`;
+  $("#buildSlotsSummary").innerHTML = '<p class="muted">Loading…</p>';
+  $("#buildSlotsList").innerHTML = "";
+  if (!$("#buildSlotsDialog").open) $("#buildSlotsDialog").showModal();
+  try {
+    const data = await api(`/api/projects/${project.id}/build-slots`);
+    const builds = data.builds || { slots: [], summary: {} };
+    const active = builds.summary?.active || { type: "source" };
+    $("#buildSlotsSummary").innerHTML = `<div class="backup-row">
+      <div class="backup-info"><div class="backup-title-line"><strong>Production source</strong>${active.type === "source" ? '<span class="badge success">Active</span>' : '<span class="badge">Standby</span>'}</div><div class="backup-meta path">${escapeHtml(project.projectRoot)}</div></div>
+      <div class="backup-actions"><button type="button" class="button primary small" data-run-source-build ${active.type === "source" ? "disabled" : ""}>Return To Production</button></div>
+    </div>`;
+    $("#buildSlotsList").innerHTML = builds.slots.length
+      ? builds.slots
+          .map(
+            (slot) => `<div class="backup-row" data-slot-id="${escapeHtml(slot.slotId)}">
+          <div class="backup-info">
+            <div class="backup-title-line"><strong>${escapeHtml(buildSlotLabel(slot))}</strong>${slot.active ? '<span class="badge success">Active</span>' : '<span class="badge">Prepared</span>'}</div>
+            <div class="backup-meta">Prepared ${escapeHtml(formatDate(slot.preparedAt))} · ${slot.fileCount ?? "-"} files · ${formatBytes(slot.sourceBytes)}</div>
+            <div class="path">${escapeHtml(slot.appRoot)}</div>
+          </div>
+          <div class="backup-actions"><button type="button" class="button primary small" data-run-slot ${slot.active ? "disabled" : ""}>Run Build</button><button type="button" class="button danger small" data-delete-slot ${slot.active ? "disabled" : ""}>Delete Prepared Build</button></div>
+        </div>`,
+          )
+          .join("")
+      : '<div class="empty">No backup builds are prepared yet. Use Prepare Build or Run Build from backup history.</div>';
+  } catch (error) {
+    $("#buildSlotsSummary").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
   }
 }
 
@@ -7000,7 +7091,29 @@ $("#copyEventJsonBtn").addEventListener("click", async () => {
 async function loadDesktopSettings() {
   if (!window.upmDesktop?.getDesktopSettings) return null;
   state.desktop.settings = await window.upmDesktop.getDesktopSettings();
+  const elevationButton = $("#restartElevatedBtn");
+  if (elevationButton) {
+    const support = state.desktop.settings?.elevationRelaunch || {};
+    const alreadyElevated = state.desktop.settings?.elevation?.elevated === true;
+    elevationButton.hidden = !support.supported || alreadyElevated;
+    elevationButton.textContent = support.label || "Restart Elevated";
+    elevationButton.title = support.supported
+      ? "Restart UPM and approve the operating-system elevation prompt."
+      : support.reason || "Elevation relaunch is unavailable.";
+  }
   return state.desktop.settings;
+}
+
+async function restartDesktopElevated() {
+  if (!window.upmDesktop?.restartElevated) throw new Error("Desktop elevation is unavailable.");
+  const settings = state.desktop.settings || (await loadDesktopSettings());
+  if (settings?.elevation?.elevated) {
+    toast("UPM is already running elevated.");
+    return;
+  }
+  if (!settings?.elevationRelaunch?.supported)
+    throw new Error(settings?.elevationRelaunch?.reason || "Elevation relaunch is unavailable.");
+  await window.upmDesktop.restartElevated();
 }
 
 async function openDesktopDataFolder() {
@@ -7013,6 +7126,12 @@ async function openDashboardInBrowser() {
   const settings = state.desktop.settings || (await loadDesktopSettings());
   if (!settings?.dashboardUrl) throw new Error("The dashboard URL is unavailable.");
   await window.upmDesktop.openExternal(settings.dashboardUrl);
+}
+
+async function openRemoteUpmConnections() {
+  if (!window.upmDesktop?.openRemoteConnections)
+    throw new Error("Remote UPM connection management is unavailable.");
+  await window.upmDesktop.openRemoteConnections();
 }
 
 async function openProjectInEditor(project) {
@@ -7056,13 +7175,19 @@ async function startProjectInPm2(project, button) {
       method: "POST",
       body: JSON.stringify({ refresh: true }),
     });
+    const queueWaiting = ["waiting-for-docker", "waiting-for-containers"].includes(
+      data.result.reason,
+    );
+    const elevationBlocked = data.result.reason === "elevation-required";
     toast(
       data.result.started
         ? `PM2 start completed for ${project.name}.`
-        : data.result.reason === "waiting-for-docker"
-          ? `PM2 start delayed for ${project.name}: ${data.result.message || "waiting for Docker to become ready"}`
-          : `PM2 start skipped: ${data.result.reason || "already running"}.`,
-      data.result.reason === "waiting-for-docker",
+        : queueWaiting
+          ? `PM2 start queued for ${project.name}: ${data.result.message || "waiting for startup requirements"}`
+          : elevationBlocked
+            ? `PM2 start blocked for ${project.name}: ${data.result.message || "restart UPM elevated, then start the project again"}`
+            : `PM2 start skipped: ${data.result.reason || "already running"}.`,
+      queueWaiting || elevationBlocked,
     );
     await refresh();
   } finally {
@@ -7212,6 +7337,7 @@ $("#projectGrid").addEventListener("click", async (event) => {
       return;
     }
     if (action === "history") return showBackups(project);
+    if (action === "build-slots") return showBuildSlots(project);
     if (action === "tasks") return openProjectTasks(project);
     if (action === "dependencies") return openDependencies(project);
     if (action === "file-tools") return openFileTools(project);
@@ -7290,6 +7416,12 @@ $("#projectGrid").addEventListener("click", async (event) => {
   }
 });
 
+$("#buildSlotsBtn").addEventListener("click", async () => {
+  const project = state.projects.find((item) => item.id === state.selectedBackupProject);
+  if (!project) return;
+  await showBuildSlots(project);
+});
+
 $("#verifyAllBtn").addEventListener("click", async () => {
   const project = state.projects.find((item) => item.id === state.selectedBackupProject);
   if (!project) return;
@@ -7321,6 +7453,69 @@ $("#backupsList").addEventListener("click", async (event) => {
   const project = state.projects.find((item) => item.id === state.selectedBackupProject);
   if (!row || !project) return;
   const file = row.dataset.file;
+
+  const prepareBuildButton = event.target.closest("[data-prepare-build]");
+  if (prepareBuildButton) {
+    const reset = prepareBuildButton.dataset.resetBuild === "true";
+    if (
+      reset &&
+      !confirm(
+        `Reset the prepared runtime copy for ${file} from its verified backup? Runtime changes inside that slot will be discarded.`,
+      )
+    )
+      return;
+    prepareBuildButton.disabled = true;
+    try {
+      const data = await api(
+        `/api/projects/${project.id}/backups/${encodeURIComponent(file)}/build-slot/prepare`,
+        { method: "POST", body: JSON.stringify({ reset }) },
+      );
+      toast(
+        data.result.reused
+          ? "Build slot is already prepared."
+          : "Backup prepared as a runnable build.",
+      );
+      await showBackups(project);
+      await refresh();
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      prepareBuildButton.disabled = false;
+    }
+    return;
+  }
+
+  const runBuildButton = event.target.closest("[data-run-build]");
+  if (runBuildButton) {
+    if (
+      !confirm(
+        `Run ${project.name} from backup ${file}? UPM will replace the matched PM2 process and automatically roll back if the selected build does not start cleanly.`,
+      )
+    )
+      return;
+    runBuildButton.disabled = true;
+    try {
+      const data = await api(
+        `/api/projects/${project.id}/backups/${encodeURIComponent(file)}/build-slot/run`,
+        { method: "POST", body: "{}" },
+      );
+      const mismatch = data.result.activation?.sync?.dependencyMismatch === true;
+      toast(
+        mismatch
+          ? "Backup build is running. Warning: its package metadata differs from production while shared node_modules is in use."
+          : "Backup build is running.",
+        mismatch,
+      );
+      await refresh();
+      const updated = state.projects.find((item) => item.id === project.id) || project;
+      await showBackups(updated);
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      runBuildButton.disabled = false;
+    }
+    return;
+  }
 
   const restoreButton = event.target.closest("[data-restore-backup]");
   if (restoreButton) return openRestoreDialog(project, file);
@@ -7364,6 +7559,87 @@ $("#backupsList").addEventListener("click", async (event) => {
   }
 });
 
+$("#buildSlotsDialog").addEventListener("click", async (event) => {
+  const project = state.projects.find((item) => item.id === state.selectedBackupProject);
+  if (!project) return;
+
+  const sourceButton = event.target.closest("[data-run-source-build]");
+  if (sourceButton) {
+    if (
+      !confirm(
+        `Return ${project.name} to its production source tree? UPM will replace the matched PM2 process and keep prepared builds available for later.`,
+      )
+    )
+      return;
+    sourceButton.disabled = true;
+    try {
+      await api(`/api/projects/${project.id}/build-slots/source/run`, {
+        method: "POST",
+        body: "{}",
+      });
+      toast("Production source build is running.");
+      await refresh();
+      const updated = state.projects.find((item) => item.id === project.id) || project;
+      await showBuildSlots(updated);
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      sourceButton.disabled = false;
+    }
+    return;
+  }
+
+  const row = event.target.closest("[data-slot-id]");
+  if (!row) return;
+  const slotId = row.dataset.slotId;
+  const runButton = event.target.closest("[data-run-slot]");
+  if (runButton) {
+    if (!confirm(`Switch ${project.name} to this prepared backup build?`)) return;
+    runButton.disabled = true;
+    try {
+      const data = await api(
+        `/api/projects/${project.id}/build-slots/${encodeURIComponent(slotId)}/run`,
+        { method: "POST", body: "{}" },
+      );
+      const mismatch = data.result.sync?.dependencyMismatch === true;
+      toast(
+        mismatch
+          ? "Prepared build is running. Warning: package metadata differs from production while shared node_modules is in use."
+          : "Prepared build is running.",
+        mismatch,
+      );
+      await refresh();
+      const updated = state.projects.find((item) => item.id === project.id) || project;
+      await showBuildSlots(updated);
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      runButton.disabled = false;
+    }
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-delete-slot]");
+  if (!deleteButton) return;
+  if (
+    !confirm("Delete this prepared runtime build? The original backup archive will not be deleted.")
+  )
+    return;
+  deleteButton.disabled = true;
+  try {
+    await api(`/api/projects/${project.id}/build-slots/${encodeURIComponent(slotId)}`, {
+      method: "DELETE",
+    });
+    toast("Prepared runtime build deleted. Backup archive retained.");
+    await showBuildSlots(project);
+    await refresh();
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    deleteButton.disabled = false;
+  }
+});
+
 $("#pruneJournalBtn").addEventListener("click", () =>
   pruneDeltaJournal().catch((error) => toast(error.message, true)),
 );
@@ -7381,6 +7657,12 @@ $("#openDesktopDataBtn")?.addEventListener("click", () =>
 );
 $("#openDesktopBrowserBtn")?.addEventListener("click", () =>
   openDashboardInBrowser().catch((error) => toast(error.message, true)),
+);
+$("#openRemoteUpmBtn")?.addEventListener("click", () =>
+  openRemoteUpmConnections().catch((error) => toast(error.message, true)),
+);
+$("#restartElevatedBtn")?.addEventListener("click", () =>
+  restartDesktopElevated().catch((error) => toast(error.message, true)),
 );
 $("#logoutBtn").addEventListener("click", () =>
   logout().catch((error) => toast(error.message, true)),

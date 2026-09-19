@@ -8,7 +8,11 @@ const {
   requireSafePathComponent,
   safeName,
 } = require("../backup/project-backup");
-const { isPathInside } = require("../pm2/pm2-monitor");
+const {
+  canonicalPath,
+  comparablePath,
+  isPathInside,
+} = require("../filesystem/path-boundary");
 
 async function filesystemStats(directory) {
   const target = path.resolve(String(directory));
@@ -93,36 +97,54 @@ class RemoteProjectExecutor {
     };
   }
 
+  async _canonicalAllowedPath(candidate, roots, message) {
+    const canonicalCandidate = await canonicalPath(candidate);
+    for (const root of roots) {
+      const canonicalRoot = await canonicalPath(root);
+      if (isPathInside(canonicalRoot, canonicalCandidate)) return canonicalCandidate;
+    }
+    throw new Error(`${message}: ${path.resolve(candidate)}`);
+  }
+
   async validate(project) {
     const p = this._normalize(project);
-    if (
-      this.allowedProjectRoots.length &&
-      !this.allowedProjectRoots.some((root) => isPathInside(root, p.projectRoot))
-    ) {
-      throw new Error(`Project path is outside UPM_AGENT_ALLOWED_PROJECT_ROOTS: ${p.projectRoot}`);
-    }
+    const canonicalProjectRoot = await this._canonicalAllowedPath(
+      p.projectRoot,
+      this.allowedProjectRoots,
+      "Project path is outside UPM_AGENT_ALLOWED_PROJECT_ROOTS",
+    );
     const stat = await fsp.stat(p.projectRoot);
     if (!stat.isDirectory()) throw new Error("Remote project path must be a directory.");
-    if (!this.allowedBackupRoots.some((root) => isPathInside(root, p.backupDir)))
-      throw new Error(
-        `Primary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS: ${p.backupDir}`,
-      );
-    if (
-      p.backupDirSecondary &&
-      !this.allowedBackupRoots.some((root) => isPathInside(root, p.backupDirSecondary))
-    )
-      throw new Error(
-        `Secondary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS: ${p.backupDirSecondary}`,
-      );
-    if (isPathInside(p.projectRoot, p.backupDir))
+
+    const canonicalBackupDir = await this._canonicalAllowedPath(
+      p.backupDir,
+      this.allowedBackupRoots,
+      "Primary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS",
+    );
+    const canonicalBackupDirSecondary = p.backupDirSecondary
+      ? await this._canonicalAllowedPath(
+          p.backupDirSecondary,
+          this.allowedBackupRoots,
+          "Secondary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS",
+        )
+      : null;
+
+    if (isPathInside(canonicalProjectRoot, canonicalBackupDir))
       throw new Error("Primary backup path cannot be inside the project root.");
-    if (p.backupDirSecondary && isPathInside(p.projectRoot, p.backupDirSecondary))
+    if (
+      canonicalBackupDirSecondary &&
+      isPathInside(canonicalProjectRoot, canonicalBackupDirSecondary)
+    )
       throw new Error("Secondary backup path cannot be inside the project root.");
-    if (p.backupDirSecondary && path.resolve(p.backupDirSecondary) === path.resolve(p.backupDir))
+    if (
+      canonicalBackupDirSecondary &&
+      comparablePath(canonicalBackupDirSecondary) === comparablePath(canonicalBackupDir)
+    )
       throw new Error("Primary and secondary backup paths must be different.");
-    const journalRoot = path.resolve(this.dataDir, "delta-journal");
-    const journalDir = path.resolve(this._journalDir(p));
-    if (!isPathInside(journalRoot, journalDir) || journalRoot === journalDir)
+
+    const journalRoot = await canonicalPath(path.resolve(this.dataDir, "delta-journal"));
+    const journalDir = await canonicalPath(path.resolve(this._journalDir(p)));
+    if (!isPathInside(journalRoot, journalDir, { allowEqual: false }))
       throw new Error("Remote delta-journal path escaped the agent data directory.");
     return p;
   }
@@ -178,6 +200,11 @@ class RemoteProjectExecutor {
     const secondary = this._engine(p, "secondary");
     try {
       await fsp.mkdir(p.backupDirSecondary, { recursive: true });
+      await this._canonicalAllowedPath(
+        p.backupDirSecondary,
+        this.allowedBackupRoots,
+        "Secondary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS",
+      );
       const primaryBackups = (await primary.listBackups()).slice(0, p.keep);
       const secondaryBackups = await secondary.listBackups();
       const existing = new Set(
@@ -219,6 +246,11 @@ class RemoteProjectExecutor {
   async backup(project, options = {}) {
     const p = await this.validate(project);
     await fsp.mkdir(p.backupDir, { recursive: true });
+    await this._canonicalAllowedPath(
+      p.backupDir,
+      this.allowedBackupRoots,
+      "Primary backup path is outside UPM_AGENT_ALLOWED_BACKUP_ROOTS",
+    );
     const result = await this._engine(p).backupIfChanged({
       force: options.force === true,
     });
@@ -417,10 +449,11 @@ class RemoteProjectExecutor {
           this.restoreRoot,
           `${safeName(p.name)}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
         );
-    if (!this.allowedRestoreRoots.some((root) => isPathInside(root, destination)))
-      throw new Error(
-        `Restore destination is outside UPM_AGENT_ALLOWED_RESTORE_ROOTS: ${destination}`,
-      );
+    await this._canonicalAllowedPath(
+      destination,
+      this.allowedRestoreRoots,
+      "Restore destination is outside UPM_AGENT_ALLOWED_RESTORE_ROOTS",
+    );
     const result = await this._engine(p, selected.destination).restoreBackup(file, destination, {
       overwrite: options.overwrite === true,
     });

@@ -108,7 +108,7 @@ module.exports = [
     rules: sharedRules,
   },
   {
-    files: ["public/**/*.js"],
+    files: ["public/**/*.js", "desktop/remote-connect.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "script",

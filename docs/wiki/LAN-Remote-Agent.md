@@ -2,6 +2,8 @@
 
 The LAN Remote Agent lets a central UPM dashboard observe/manage supported project operations on another trusted PC.
 
+If the other PC already runs a complete UPM dashboard and you want to log into that full instance, use the Electron desktop app's **Remote UPM Connections** feature instead. Remote UPM windows are full dashboard sessions; Remote Agents intentionally expose only the supported agent API surface.
+
 ## Typical uses
 
 - report remote PM2 status

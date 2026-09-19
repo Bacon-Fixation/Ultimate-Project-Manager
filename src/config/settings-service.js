@@ -448,10 +448,17 @@ async function saveSettings({ envPath, runtimeConfig, input = {}, secrets = {} }
     changed.push("authPassword");
   }
 
-  const rotateSessionSecret = secrets.rotateSessionSecret === true;
+  const rotateSessionSecretRequested = secrets.rotateSessionSecret === true;
+  const authIdentityChanged =
+    changed.includes("authEnabled") || changed.includes("authUsername") || Boolean(newPassword);
+  const rotateSessionSecret = rotateSessionSecretRequested || authIdentityChanged;
   if (rotateSessionSecret) {
     envUpdates.UPM_SESSION_SECRET = generateSessionSecret();
     changed.push("sessionSecret");
+    if (authIdentityChanged && !rotateSessionSecretRequested)
+      warnings.push(
+        "Authentication identity or credentials changed, so existing dashboard sessions were invalidated.",
+      );
     if (runtimeConfig.environmentOverrideKeys?.includes("UPM_SESSION_SECRET")) {
       warnings.push(
         "Session secret rotated in .env, but a valid parent-process UPM_SESSION_SECRET currently overrides the file. Remove that external override before restart for the rotated secret to become active.",

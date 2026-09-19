@@ -73,6 +73,16 @@ function signPayload(payload, secret) {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
+function sessionSigningKey(secret, username, passwordHash) {
+  return crypto
+    .createHmac("sha256", secret)
+    .update("upm-session-v2\0")
+    .update(String(username || ""))
+    .update("\0")
+    .update(String(passwordHash || ""))
+    .digest();
+}
+
 function timingSafeTextEqual(a, b) {
   const left = crypto
     .createHash("sha256")
@@ -218,14 +228,16 @@ class AuthService {
         }),
       ),
     );
-    return `${payload}.${signPayload(payload, this.sessionSecret)}`;
+    const signingKey = sessionSigningKey(this.sessionSecret, this.username, this.passwordHash);
+    return `${payload}.${signPayload(payload, signingKey)}`;
   }
 
   verifySession(token) {
     if (!this.enabled) return { username: this.username };
     const [payload, signature, ...extra] = String(token || "").split(".");
     if (!payload || !signature || extra.length) return null;
-    const expected = signPayload(payload, this.sessionSecret);
+    const signingKey = sessionSigningKey(this.sessionSecret, this.username, this.passwordHash);
+    const expected = signPayload(payload, signingKey);
     if (!timingSafeTextEqual(signature, expected)) return null;
     try {
       const data = JSON.parse(fromB64url(payload).toString("utf8"));

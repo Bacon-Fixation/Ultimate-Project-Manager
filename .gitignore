@@ -14,6 +14,7 @@ data/project-tasks.json
 data/backups/
 data/restores/
 data/file-tools-output/
+data/build-slots/
 *.log
 data/recovery/
 data/delta-journal/
