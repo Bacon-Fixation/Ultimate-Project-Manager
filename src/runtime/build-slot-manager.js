@@ -24,9 +24,10 @@ function normalizeOverlayPaths(value, fallback = [".env"]) {
       normalized.length > 512 ||
       path.posix.isAbsolute(normalized) ||
       normalized.includes("\0") ||
+      normalized.includes(":") ||
       normalized.split("/").some((part) => !part || part === "." || part === "..") ||
       normalized === METADATA_FILE ||
-      normalized === "node_modules" ||
+      normalized.split("/").some((part) => part.toLowerCase() === "node_modules") ||
       /[\x00-\x1f\x7f]/.test(normalized)
     ) {
       throw new Error(`Invalid build-slot overlay path: ${normalized || "(empty)"}`);
@@ -39,7 +40,13 @@ function normalizeOverlayPaths(value, fallback = [".env"]) {
 
 function safeComponent(value, label = "Build slot id") {
   const text = String(value || "").trim();
-  if (!text || text.length > 160 || text === "." || text === ".." || /[\\/\x00-\x1f\x7f]/.test(text)) {
+  if (
+    !text ||
+    text.length > 160 ||
+    text === "." ||
+    text === ".." ||
+    /[\\/\x00-\x1f\x7f]/.test(text)
+  ) {
     throw new Error(`${label} is invalid.`);
   }
   return text;
@@ -75,6 +82,23 @@ async function fileHash(file) {
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
+  }
+}
+
+async function validateOverlayTree(source, projectRoot, nested = false) {
+  const stat = await fsp.lstat(source);
+  if (stat.isSymbolicLink()) {
+    if (nested) throw new Error("Nested symlinks are not supported in build-slot overlays.");
+    const resolved = await fsp.realpath(source);
+    if (!isPathInside(projectRoot, resolved))
+      throw new Error("Build-slot overlay symlink points outside the project root.");
+    return validateOverlayTree(resolved, projectRoot);
+  }
+  if (stat.isDirectory()) {
+    for (const entry of await fsp.readdir(source))
+      await validateOverlayTree(path.join(source, entry), projectRoot, true);
+  } else if (!stat.isFile()) {
+    throw new Error("Unsupported build-slot overlay path type.");
   }
 }
 
@@ -132,7 +156,10 @@ class BuildSlotManager {
       active: { type: "source", changedAt: null },
       previous: null,
     });
-    if (state.active?.type === "slot" && !slots.some((slot) => slot.slotId === state.active.slotId)) {
+    if (
+      state.active?.type === "slot" &&
+      !slots.some((slot) => slot.slotId === state.active.slotId)
+    ) {
       state.previous = state.active;
       state.active = { type: "source", changedAt: new Date().toISOString(), recovered: true };
       await this._writeState(projectId, state);
@@ -151,11 +178,13 @@ class BuildSlotManager {
   }
 
   _cached(projectId) {
-    return this.cache.get(projectId) || {
-      projectDir: this._projectDir(projectId),
-      slots: [],
-      state: { version: 1, active: { type: "source", changedAt: null }, previous: null },
-    };
+    return (
+      this.cache.get(projectId) || {
+        projectDir: this._projectDir(projectId),
+        slots: [],
+        state: { version: 1, active: { type: "source", changedAt: null }, previous: null },
+      }
+    );
   }
 
   runtimeRoots(projectId) {
@@ -216,7 +245,11 @@ class BuildSlotManager {
 
     if (!reset && (await exists(path.join(slotDir, METADATA_FILE))) && (await exists(appRoot))) {
       await this.refreshProject(project.id);
-      return { prepared: false, reused: true, slot: this._cached(project.id).slots.find((item) => item.slotId === slotId) };
+      return {
+        prepared: false,
+        reused: true,
+        slot: this._cached(project.id).slots.find((item) => item.slotId === slotId),
+      };
     }
 
     const staging = `${slotDir}.prepare-${process.pid}-${Date.now()}`;
@@ -277,16 +310,20 @@ class BuildSlotManager {
       if (error.code === "ENOENT") return null;
       throw error;
     });
+    if (sourceStat) await validateOverlayTree(source, canonicalProject);
     await fsp.rm(target, { recursive: true, force: true });
     if (!sourceStat) return { path: relativePath, copied: false, missing: true };
     await fsp.mkdir(path.dirname(target), { recursive: true });
     if (sourceStat.isSymbolicLink()) {
       const realSource = await fsp.realpath(source);
       if (!isPathInside(canonicalProject, realSource)) {
-        throw new Error(`Build-slot overlay symlink points outside the project root: ${relativePath}`);
+        throw new Error(
+          `Build-slot overlay symlink points outside the project root: ${relativePath}`,
+        );
       }
       const realStat = await fsp.stat(realSource);
-      if (realStat.isDirectory()) await fsp.cp(realSource, target, { recursive: true, force: true });
+      if (realStat.isDirectory())
+        await fsp.cp(realSource, target, { recursive: true, force: true });
       else if (realStat.isFile()) await fsp.copyFile(realSource, target);
       else throw new Error(`Unsupported overlay path type: ${relativePath}`);
     } else if (sourceStat.isDirectory()) {
@@ -301,9 +338,13 @@ class BuildSlotManager {
 
   async synchronize(project, slot, options = {}) {
     if (!slot?.appRoot) throw new Error("Prepared build slot was not found.");
-    const overlays = normalizeOverlayPaths(options.overlayPaths, project.buildSlotOverlayPaths || [".env"]);
+    const overlays = normalizeOverlayPaths(
+      options.overlayPaths,
+      project.buildSlotOverlayPaths || [".env"],
+    );
     const copied = [];
-    for (const relativePath of overlays) copied.push(await this._copyOverlay(project.projectRoot, slot.appRoot, relativePath));
+    for (const relativePath of overlays)
+      copied.push(await this._copyOverlay(project.projectRoot, slot.appRoot, relativePath));
 
     let nodeModules = { linked: false, reason: "disabled" };
     if (options.linkNodeModules !== false && project.buildSlotLinkNodeModules !== false) {
@@ -312,7 +353,11 @@ class BuildSlotManager {
       if (await exists(sourceModules)) {
         const targetStat = await fsp.lstat(targetModules).catch(() => null);
         if (!targetStat) {
-          await fsp.symlink(sourceModules, targetModules, process.platform === "win32" ? "junction" : "dir");
+          await fsp.symlink(
+            sourceModules,
+            targetModules,
+            process.platform === "win32" ? "junction" : "dir",
+          );
           nodeModules = { linked: true, source: sourceModules };
         } else if (targetStat.isSymbolicLink()) {
           const [canonicalSourceModules, canonicalTargetModules] = await Promise.all([
@@ -346,7 +391,7 @@ class BuildSlotManager {
     ]);
     const dependencyMismatch = Boolean(
       (sourcePackageHash && slotPackageHash && sourcePackageHash !== slotPackageHash) ||
-        (sourceLockHash && slotLockHash && sourceLockHash !== slotLockHash),
+      (sourceLockHash && slotLockHash && sourceLockHash !== slotLockHash),
     );
     return { overlays: copied, nodeModules, dependencyMismatch };
   }

@@ -1,7 +1,6 @@
 "use strict";
 
 const fsp = require("fs/promises");
-const path = require("path");
 const { atomicWriteFile } = require("../filesystem/atomic-file");
 const { hashPassword } = require("../security/auth-service");
 const { ensureLastKnownGoodEnv, markSettingsPending } = require("./settings-recovery");

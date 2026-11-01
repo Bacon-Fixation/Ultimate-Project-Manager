@@ -1,6 +1,6 @@
 {
   "name": "ultimate-project-manager",
-  "version": "0.10.14",
+  "version": "0.10.15",
   "author": {
     "name": "Bacon Fixation",
     "url": "https://github.com/Bacon-Fixation/"
@@ -41,7 +41,8 @@
     "auth:hash": "node src/security/generate-password-hash.js",
     "encryption:key": "node src/security/generate-encryption-key.js",
     "agent": "node src/remote-agent/index.js",
-    "agent:pm2": "pm2 start ecosystem.agent.config.js --only Ultimate_Project_Manager_LAN_Agent"
+    "agent:pm2": "pm2 start ecosystem.agent.config.js --only Ultimate_Project_Manager_LAN_Agent",
+    "memory:benchmark": "node scripts/memory-benchmark.js"
   },
   "dependencies": {
     "@babel/parser": "^8.0.4",

@@ -942,10 +942,10 @@
                       starts are queued until the gate succeeds or its timeout expires.
                     </li>
                     <li>
-                      <strong>Administrator/root requirement:</strong> A project can refuse to
-                      start unless UPM is already elevated. UPM never stores an elevation password
-                      or suppresses the operating-system prompt. Start the elevated UPM session
-                      before its PM2 daemon is created so PM2 and child processes inherit the same
+                      <strong>Administrator/root requirement:</strong> A project can refuse to start
+                      unless UPM is already elevated. UPM never stores an elevation password or
+                      suppresses the operating-system prompt. Start the elevated UPM session before
+                      its PM2 daemon is created so PM2 and child processes inherit the same
                       privilege context.
                     </li>
                     <li>
@@ -1241,9 +1241,9 @@
                       installed Electron runtime itself tiny.
                     </li>
                     <li>
-                      <strong>Measure it:</strong> Run
-                      <code>npm run desktop:size</code> after building to list total output
-                      size and the largest files in each release folder.
+                      <strong>Measure it:</strong> Run <code>npm run desktop:size</code> after
+                      building to list total output size and the largest files in each release
+                      folder.
                     </li>
                   </ul>
                   <div class="help-callout">
@@ -2244,8 +2244,8 @@
                     id="pm2RequiredContainers"
                     rows="4"
                     placeholder="mariadb&#10;redis&#10;my-api"
-                  ></textarea
-                ></label>
+                  ></textarea>
+                </label>
                 <label
                   >Startup gate timeout (seconds)
                   <span class="hint">15-3600; queued manual starts expire after this time</span
@@ -2261,8 +2261,8 @@
               <p class="hint">
                 Named container dependencies imply Docker readiness even when the general Docker
                 gate is off. Containers with a Docker healthcheck must become
-                <code>healthy</code>; containers without one only need to be running. A manual
-                Start In PM2 request is queued while these gates are waiting.
+                <code>healthy</code>; containers without one only need to be running. A manual Start
+                In PM2 request is queued while these gates are waiting.
               </p>
               <div class="form-row">
                 <label
@@ -2301,8 +2301,9 @@
             <fieldset class="settings-group settings-group-flat">
               <legend>Runnable backup builds</legend>
               <p class="hint">
-                Prepared backup builds run from UPM&apos;s isolated runtime cache. The backup archive
-                and registered source tree are not moved or overwritten when builds are switched.
+                Prepared backup builds run from UPM&apos;s isolated runtime cache. The backup
+                archive and registered source tree are not moved or overwritten when builds are
+                switched.
               </p>
               <label
                 >Live overlay paths
@@ -2315,12 +2316,12 @@
               </label>
               <label class="check-row"
                 ><input id="buildSlotLinkNodeModules" type="checkbox" checked /> Reuse the live
-                project&apos;s <code>node_modules</code> through a junction/symlink when the backup does
-                not contain its own dependency folder</label
+                project&apos;s <code>node_modules</code> through a junction/symlink when the backup
+                does not contain its own dependency folder</label
               >
               <p class="hint">
-                <code>.env</code> is the default overlay. Add <code>config.json</code> when a project
-                should use its current configuration while testing older code. UPM reports a
+                <code>.env</code> is the default overlay. Add <code>config.json</code> when a
+                project should use its current configuration while testing older code. UPM reports a
                 dependency warning when the selected build&apos;s package metadata differs from the
                 live source while shared <code>node_modules</code> is being used.
               </p>
@@ -2644,7 +2645,12 @@
               Hot-swap PM2 between prepared backup builds without restoring over the source tree.
             </p>
           </div>
-          <button type="button" class="icon-button" data-close="buildSlotsDialog" aria-label="Close">
+          <button
+            type="button"
+            class="icon-button"
+            data-close="buildSlotsDialog"
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -3379,9 +3385,7 @@
                   Previous
                 </button>
                 <span id="textSanitizerChangePosition" class="badge">No Changes</span>
-                <button id="textSanitizerNextChange" type="button" class="button tiny">
-                  Next
-                </button>
+                <button id="textSanitizerNextChange" type="button" class="button tiny">Next</button>
               </div>
             </div>
             <div id="textSanitizerChangeLocation" class="muted"></div>
@@ -3944,10 +3948,10 @@
           <div class="settings-restart-notice">
             <strong>Most Runtime Changes Apply Immediately</strong>
             <span
-              >UPM live-applies supported security, authentication, encryption, editor, and LAN-agent
-              settings. Listener, storage-root, and HTTP limit/timeout changes are saved safely and
-              prompt for a restart. Pending settings are protected by a last-known-good startup
-              fallback.</span
+              >UPM live-applies supported security, authentication, encryption, editor, and
+              LAN-agent settings. Listener, storage-root, and HTTP limit/timeout changes are saved
+              safely and prompt for a restart. Pending settings are protected by a last-known-good
+              startup fallback.</span
             >
           </div>
 

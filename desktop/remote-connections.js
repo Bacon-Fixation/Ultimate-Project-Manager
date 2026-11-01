@@ -50,7 +50,9 @@ function normalizeRemoteConnection(input = {}, options = {}) {
       : crypto.randomUUID();
   if (!validConnectionId(id)) throw new Error("Remote UPM connection id is invalid.");
 
-  const name = String(input.name || defaultConnectionName(url)).trim().slice(0, 80);
+  const name = String(input.name || defaultConnectionName(url))
+    .trim()
+    .slice(0, 80);
   if (!name) throw new Error("A Remote UPM connection name is required.");
   if (/[\u0000-\u001f\u007f]/u.test(name))
     throw new Error("Remote UPM connection names must not contain control characters.");
@@ -92,7 +94,9 @@ function remoteSessionPartition(connection) {
 
 function sameRemoteOrigin(connection, candidateUrl) {
   try {
-    return new URL(candidateUrl).origin === new URL(normalizeRemoteConnection(connection).url).origin;
+    return (
+      new URL(candidateUrl).origin === new URL(normalizeRemoteConnection(connection).url).origin
+    );
   } catch {
     return false;
   }

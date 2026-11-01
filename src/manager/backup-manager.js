@@ -416,13 +416,17 @@ class BackupManager extends EventEmitter {
       });
     this.dependencyUpdatesRunning = new Set();
     this.diffCache = new Map();
+    this.diffCacheTimer = setInterval(() => this._pruneDiffCache(), 10000);
+    this.diffCacheTimer.unref?.();
     this.recovery = new RecoveryService({
       manager: this,
       dataDir: this.dataDir,
     });
     this.buildSlots =
       options.buildSlots ||
-      new BuildSlotManager({ root: options.buildSlotRoot || path.join(this.dataDir, "build-slots") });
+      new BuildSlotManager({
+        root: options.buildSlotRoot || path.join(this.dataDir, "build-slots"),
+      });
     this.buildSlotSwitching = new Set();
     this.featurePacks = new FeaturePackService({ manager: this });
     this.projectTasks = new ProjectTaskService({ dataDir: this.dataDir });
@@ -1281,7 +1285,16 @@ class BackupManager extends EventEmitter {
     return runtime.lastResult;
   }
 
+  _pruneDiffCache() {
+    const now = Date.now();
+    for (const [id, entry] of this.diffCache) {
+      if (entry.expiresAt <= now) this.diffCache.delete(id);
+    }
+    while (this.diffCache.size > 8) this.diffCache.delete(this.diffCache.keys().next().value);
+  }
+
   async getProjectDiff(id, options = {}) {
+    this._pruneDiffCache();
     const project = this.projects.get(id);
     if (!project) throw new Error("Project not found.");
     const cached = this.diffCache.get(id);
@@ -1344,7 +1357,12 @@ class BackupManager extends EventEmitter {
       },
       files: rows,
     };
-    this.diffCache.set(id, { expiresAt: Date.now() + 10_000, value: result });
+    // Very large diffs remain available to the caller without keeping a second long-lived reference.
+    if (rows.length <= 5000) {
+      this.diffCache.delete(id);
+      this.diffCache.set(id, { expiresAt: Date.now() + 10_000, value: result });
+      this._pruneDiffCache();
+    }
     return result;
   }
 
@@ -2132,7 +2150,9 @@ class BackupManager extends EventEmitter {
   _assertBuildSlotProject(project, options = {}) {
     if (!project) throw new Error("Project not found.");
     if (isRemoteProject(project))
-      throw new Error("Runnable backup builds are currently available for local UPM projects only.");
+      throw new Error(
+        "Runnable backup builds are currently available for local UPM projects only.",
+      );
     if (options.requireControls === true) {
       if (project.pm2Monitoring === false)
         throw new Error("PM2 monitoring must be enabled before a backup build can be run.");
@@ -2150,7 +2170,22 @@ class BackupManager extends EventEmitter {
     return this.buildSlots.list(project);
   }
 
+  async _withBuildSlotOperation(id, operation) {
+    if (this.buildSlotSwitching.has(id))
+      throw new Error("A build operation is already in progress for this project.");
+    this.buildSlotSwitching.add(id);
+    try {
+      return await operation();
+    } finally {
+      this.buildSlotSwitching.delete(id);
+    }
+  }
+
   async prepareBackupBuild(id, fileName, options = {}) {
+    return this._withBuildSlotOperation(id, () => this._prepareBackupBuild(id, fileName, options));
+  }
+
+  async _prepareBackupBuild(id, fileName, options = {}) {
     const project = this.projects.get(id);
     this._assertBuildSlotProject(project);
     const active = this.buildSlots.active(project);
@@ -2162,7 +2197,9 @@ class BackupManager extends EventEmitter {
       throw new Error(`Backup failed integrity verification: ${verification.message}`);
 
     if (options.reset === true && active.type === "slot" && active.slot?.backupFile === fileName) {
-      throw new Error("The active build cannot be reset while it is running. Return to source first.");
+      throw new Error(
+        "The active build cannot be reset while it is running. Return to source first.",
+      );
     }
 
     const result = await this.buildSlots.prepare(
@@ -2177,14 +2214,18 @@ class BackupManager extends EventEmitter {
           }),
       },
     );
-    await this.log("info", `${result.reused ? "Build slot ready" : "Backup prepared as build"}: ${project.name}`, {
-      projectId: id,
-      operation: result.reused ? "build-slot-ready" : "build-slot-prepare",
-      backupFile: fileName,
-      backupDestination: copy.destination.key,
-      slotId: result.slot?.slotId || null,
-      reset: options.reset === true,
-    });
+    await this.log(
+      "info",
+      `${result.reused ? "Build slot ready" : "Backup prepared as build"}: ${project.name}`,
+      {
+        projectId: id,
+        operation: result.reused ? "build-slot-ready" : "build-slot-prepare",
+        backupFile: fileName,
+        backupDestination: copy.destination.key,
+        slotId: result.slot?.slotId || null,
+        reset: options.reset === true,
+      },
+    );
     return result;
   }
 
@@ -2215,17 +2256,25 @@ class BackupManager extends EventEmitter {
     const delayMs = Math.max(50, Math.min(3000, Number(options.delayMs) || 500));
     let status = null;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      if (attempt) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (attempt)
+        await new Promise((resolve) => {
+          setTimeout(resolve, delayMs);
+        });
       await this.pm2Monitor.refresh();
       status = this.pm2Monitor.getProjectStatus(id);
       const online = (status.processes || []).filter((proc) => proc.status === "online");
-      if (online.length && online.every((proc) => this._processRunsFromBuildRoot(proc, root))) {
+      if (
+        status.available &&
+        online.length === (status.processes || []).length &&
+        online.length &&
+        online.every((proc) => this._processRunsFromBuildRoot(proc, root))
+      ) {
         return status;
       }
     }
     const online = (status?.processes || []).filter((proc) => proc.status === "online");
-    if (!online.length)
-      throw new Error("The selected build did not reach an online PM2 state.");
+    if (!status?.available || !online.length || online.length !== (status.processes || []).length)
+      throw new Error("Not all selected build processes reached an online PM2 state.");
     throw new Error(
       "PM2 started the project outside the selected build slot. Check the ecosystem file for an absolute cwd or script path.",
     );
@@ -2248,10 +2297,8 @@ class BackupManager extends EventEmitter {
     return this._waitForBuildOnline(project.id, root);
   }
 
-  async _activateBuildSelection(project, selection, options = {}) {
+  async _activateBuildSelection(project, selection) {
     this._assertBuildSlotProject(project, { requireControls: true });
-    if (this.buildSlotSwitching.has(project.id))
-      throw new Error("A build switch is already in progress for this project.");
 
     const gate = await this._projectStartGate(project, { refresh: true });
     if (!gate.ready) throw new Error(gate.message || "Project startup gate is not ready.");
@@ -2264,10 +2311,6 @@ class BackupManager extends EventEmitter {
       const listing = this.buildSlots.list(project);
       const slot = listing.slots.find((item) => item.slotId === selection.slotId);
       if (!slot) throw new Error("Prepared build slot was not found.");
-      sync = await this.buildSlots.synchronize(project, slot, {
-        overlayPaths: project.buildSlotOverlayPaths,
-        linkNodeModules: project.buildSlotLinkNodeModules,
-      });
       target = { type: "slot", slotId: slot.slotId, root: slot.appRoot, slot };
     } else {
       target = { type: "source", root: path.resolve(project.projectRoot), slot: null };
@@ -2297,7 +2340,13 @@ class BackupManager extends EventEmitter {
       }
     }
 
-    this.buildSlotSwitching.add(project.id);
+    // Do not rewrite overlays on a live slot when the request is a no-op.
+    if (target.slot) {
+      sync = await this.buildSlots.synchronize(project, target.slot, {
+        overlayPaths: project.buildSlotOverlayPaths,
+        linkNodeModules: project.buildSlotLinkNodeModules,
+      });
+    }
     this.pm2StartQueue.delete(project.id);
     let deleted = [];
     try {
@@ -2340,14 +2389,18 @@ class BackupManager extends EventEmitter {
       } catch (rollback) {
         rollbackError = rollback;
       }
-      await this.log("error", `Build switch failed${rollbackError ? " and rollback failed" : "; previous build restored"}: ${project.name}`, {
-        projectId: project.id,
-        operation: "build-slot-activate",
-        targetBuildType: target.type,
-        targetSlotId: target.slotId || null,
-        error: error.message,
-        rollbackError: rollbackError?.message || null,
-      });
+      await this.log(
+        "error",
+        `Build switch failed${rollbackError ? " and rollback failed" : "; previous build restored"}: ${project.name}`,
+        {
+          projectId: project.id,
+          operation: "build-slot-activate",
+          targetBuildType: target.type,
+          targetSlotId: target.slotId || null,
+          error: error.message,
+          rollbackError: rollbackError?.message || null,
+        },
+      );
       if (rollbackError) {
         throw new Error(
           `Build switch failed (${error.message}) and automatic rollback also failed (${rollbackError.message}).`,
@@ -2355,19 +2408,22 @@ class BackupManager extends EventEmitter {
       }
       throw new Error(`Build switch failed and the previous build was restored: ${error.message}`);
     } finally {
-      this.buildSlotSwitching.delete(project.id);
       await this.pm2Monitor.refresh().catch(() => {});
     }
   }
 
   async activateBuildSlot(id, slotId) {
     const project = this.projects.get(id);
-    return this._activateBuildSelection(project, { type: "slot", slotId });
+    return this._withBuildSlotOperation(id, () =>
+      this._activateBuildSelection(project, { type: "slot", slotId }),
+    );
   }
 
   async activateSourceBuild(id) {
     const project = this.projects.get(id);
-    return this._activateBuildSelection(project, { type: "source" });
+    return this._withBuildSlotOperation(id, () =>
+      this._activateBuildSelection(project, { type: "source" }),
+    );
   }
 
   async runBackupBuild(id, fileName, options = {}) {
@@ -2378,6 +2434,10 @@ class BackupManager extends EventEmitter {
   }
 
   async deleteBuildSlot(id, slotId) {
+    return this._withBuildSlotOperation(id, () => this._deleteBuildSlot(id, slotId));
+  }
+
+  async _deleteBuildSlot(id, slotId) {
     const project = this.projects.get(id);
     this._assertBuildSlotProject(project);
     await this.buildSlots.delete(project, slotId);
@@ -2546,8 +2606,7 @@ class BackupManager extends EventEmitter {
         dockerRuntime: current || null,
       };
     }
-    if (!requiredContainers.length)
-      return { ready: true, enabled: true, dockerRuntime: current };
+    if (!requiredContainers.length) return { ready: true, enabled: true, dockerRuntime: current };
 
     const dependencies = await this.dockerRuntimeMonitor.inspectContainers(requiredContainers);
     if (!dependencies.ready) {
@@ -2596,7 +2655,10 @@ class BackupManager extends EventEmitter {
   async _handlePm2QueuedStarts(snapshot = {}) {
     if (!this.pm2StartQueue.size) return;
     const summaries = new Map(
-      (Array.isArray(snapshot.projects) ? snapshot.projects : []).map((item) => [item.projectId, item]),
+      (Array.isArray(snapshot.projects) ? snapshot.projects : []).map((item) => [
+        item.projectId,
+        item,
+      ]),
     );
     for (const [projectId, queued] of [...this.pm2StartQueue]) {
       const project = this.projects.get(projectId);
@@ -3329,6 +3391,8 @@ class BackupManager extends EventEmitter {
   }
 
   async shutdown() {
+    clearInterval(this.diffCacheTimer);
+    this.diffCache.clear();
     this.pm2Monitor.stop();
     this.remoteAgentMonitor.stop();
     this.serviceHealthMonitor.stop();

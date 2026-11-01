@@ -174,10 +174,6 @@ requireAudit(
   "Legacy root .bat launchers are still present.",
 );
 requireAudit(
-  fs.existsSync(path.join(ROOT, ".env.example")),
-  "Runtime configuration template is missing.",
-);
-requireAudit(
   fs.existsSync(path.join(ROOT, ".env.agent.example")),
   "LAN Agent configuration template is missing.",
 );
@@ -215,7 +211,6 @@ requireAudit(
     agentEntry.includes("server.headersTimeout = 10_000"),
   "LAN Agent TLS/server timeout hardening is missing.",
 );
-
 
 const elevationPolicy = read("src/security/elevation.js");
 const dockerRuntimeMonitor = read("src/system/docker-runtime-monitor.js");

@@ -48,9 +48,7 @@ function normalizeArch(value) {
   if (!value) return null;
   const normalized = archAliases.get(String(value).toLowerCase());
   if (!normalized) {
-    throw new Error(
-      `Unsupported architecture: ${value}. Use x64, arm64, universal, or all.`,
-    );
+    throw new Error(`Unsupported architecture: ${value}. Use x64, arm64, universal, or all.`);
   }
   return normalized;
 }
@@ -100,22 +98,24 @@ function matrix() {
 }
 
 function help() {
-  console.log([
-    "Usage: npm run desktop:build -- [options]",
-    "",
-    "Options:",
-    "  --platform win|linux|mac",
-    "  --arch x64|arm64|universal|all",
-    "  --docker    Build a Linux target in the official electron-builder Docker image",
-    "  --web       Build the Windows NSIS web installer (requires UPM_WEB_PACKAGE_URL)",
-    "  --dir       Build an unpacked directory instead of installers/packages",
-    "               Packaging is always run with electron-builder --publish never; GitHub Actions publishes separately.",
-    "  --matrix    Print the supported release matrix",
-    "  --help      Show this help",
-    "",
-    "With no options, electron-builder targets the current host and architecture using the slim profile.",
-    "AppImage must be built on Linux or through --docker; macOS DMG/ZIP builds require macOS.",
-  ].join("\n"));
+  console.log(
+    [
+      "Usage: npm run desktop:build -- [options]",
+      "",
+      "Options:",
+      "  --platform win|linux|mac",
+      "  --arch x64|arm64|universal|all",
+      "  --docker    Build a Linux target in the official electron-builder Docker image",
+      "  --web       Build the Windows NSIS web installer (requires UPM_WEB_PACKAGE_URL)",
+      "  --dir       Build an unpacked directory instead of installers/packages",
+      "               Packaging is always run with electron-builder --publish never; GitHub Actions publishes separately.",
+      "  --matrix    Print the supported release matrix",
+      "  --help      Show this help",
+      "",
+      "With no options, electron-builder targets the current host and architecture using the slim profile.",
+      "AppImage must be built on Linux or through --docker; macOS DMG/ZIP builds require macOS.",
+    ].join("\n"),
+  );
 }
 
 function shellQuote(value) {
@@ -138,7 +138,9 @@ function runLinuxDockerBuild({ arch, directory }) {
     );
   }
 
-  const image = String(process.env.UPM_ELECTRON_DOCKER_IMAGE || "electronuserland/builder:24").trim();
+  const image = String(
+    process.env.UPM_ELECTRON_DOCKER_IMAGE || "electronuserland/builder:24",
+  ).trim();
   const innerArgs = ["node", "scripts/electron-build.js", "--platform", "linux"];
   if (arch) innerArgs.push("--arch", arch);
   if (directory) innerArgs.push("--dir");

@@ -94,7 +94,7 @@ jobs:
         run: npm ci
 
       - name: Validate source
-        run: npm run check
+        run: npm run quality
 
       - name: Build desktop artifact
         # scripts/electron-build.js always passes --publish never to

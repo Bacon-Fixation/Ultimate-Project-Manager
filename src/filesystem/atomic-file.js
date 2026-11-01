@@ -9,7 +9,9 @@ const DEFAULT_RETRY_DELAY_MS = 100;
 const RETRYABLE_CODES = new Set(["EBUSY", "EACCES", "EPERM", "EMFILE", "ENFILE", "ETXTBSY"]);
 
 function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function isRetryableFileError(error) {
@@ -125,7 +127,14 @@ async function atomicWriteFile(file, data, options = {}) {
   try {
     const handle = await fsp.open(temp, "wx", mode == null ? undefined : mode);
     try {
-      if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
+      if (
+        Buffer.isBuffer(data) ||
+        data instanceof Uint8Array ||
+        (data &&
+          typeof data !== "string" &&
+          (typeof data[Symbol.asyncIterator] === "function" ||
+            typeof data[Symbol.iterator] === "function"))
+      ) {
         await handle.writeFile(data);
       } else {
         await handle.writeFile(String(data), options.encoding || "utf8");

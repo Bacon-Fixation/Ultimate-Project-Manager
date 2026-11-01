@@ -48,7 +48,10 @@ async function checkProcessElevation(options = {}) {
         env: options.env || process.env,
       },
     );
-    const elevated = String(stdout || "").trim().toLowerCase() === "elevated";
+    const elevated =
+      String(stdout || "")
+        .trim()
+        .toLowerCase() === "elevated";
     return {
       platform,
       elevated,
@@ -118,7 +121,8 @@ async function relaunchElevated(options = {}) {
   const packaged = options.packaged === true;
   const support = elevatedRelaunchSupport({ platform, packaged });
   if (!support.supported) throw new Error(support.reason);
-  if (!path.isAbsolute(executable)) throw new Error("UPM executable path is invalid for elevation.");
+  if (!path.isAbsolute(executable))
+    throw new Error("UPM executable path is invalid for elevation.");
 
   if (platform === "win32") {
     const env = { ...process.env, ...(options.env || {}), UPM_ELEVATE_EXE: executable };

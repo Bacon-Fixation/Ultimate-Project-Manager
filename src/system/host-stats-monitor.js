@@ -40,6 +40,36 @@ function normalizePercent(value) {
   return clampPercent(Number(value));
 }
 
+function chartPoints(points, maxPoints) {
+  const limit = Math.max(1, Math.min(5000, Math.floor(Number(maxPoints) || 720)));
+  if (points.length <= limit) return points;
+  const output = [];
+  for (let i = 0; i < limit; i += 1) {
+    const start = Math.floor((i * points.length) / limit);
+    const end = Math.floor(((i + 1) * points.length) / limit);
+    const bucket = points.slice(start, end);
+    const average = (values) => {
+      let count = 0,
+        sum = 0;
+      for (const value of values) {
+        if (value == null || !Number.isFinite(Number(value))) continue;
+        count += 1;
+        sum += Number(value);
+      }
+      return count ? sum / count : null;
+    };
+    const point = { timestamp: bucket[bucket.length - 1].timestamp };
+    for (const key of ["cpuPercent", "memoryPercent", "usedMemoryBytes", "processRssBytes"])
+      point[key] = average(bucket.map((item) => item[key]));
+    const cores = bucket.reduce((max, item) => Math.max(max, item.coreCpuPercent?.length || 0), 0);
+    point.coreCpuPercent = Array.from({ length: cores }, (_, index) =>
+      average(bucket.map((item) => item.coreCpuPercent?.[index])),
+    );
+    output.push(point);
+  }
+  return output;
+}
+
 class HostStatsMonitor {
   constructor({ dataDir, sampleIntervalMs = 60000, retentionHours = 168 } = {}) {
     this.file = path.join(dataDir, "host-stats-history.json");
@@ -143,7 +173,7 @@ class HostStatsMonitor {
     return { ...this.current };
   }
 
-  getHistory(hours = 24) {
+  getHistory(hours = 24, options = {}) {
     const safeHours = Math.max(1, Math.min(168, Number(hours) || 24));
     const cutoff = Date.now() - safeHours * 60 * 60 * 1000;
     const points = this.history.filter((item) => new Date(item.timestamp).getTime() >= cutoff);
@@ -176,7 +206,9 @@ class HostStatsMonitor {
     return {
       hours: safeHours,
       sampleIntervalMs: this.sampleIntervalMs,
-      points,
+      points: options.maxPoints == null ? points : chartPoints(points, options.maxPoints),
+      sourcePointCount: points.length,
+      aggregation: options.maxPoints == null ? "raw" : "bucket-average",
       summary: {
         cpuPercent: summarize("cpuPercent"),
         coreCpuPercent,

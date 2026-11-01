@@ -31,7 +31,6 @@ The secondary destination is optional and best-effort. A missing USB drive or se
 
 Encrypted backups use AES-256-GCM. Store the encryption key safely and separately. Losing the key can make old encrypted archives unrecoverable.
 
-
 ## Runnable backup builds
 
 Local PM2-managed projects can prepare a verified backup as a runnable **Build Slot**. This extracts the archive into UPM's runtime data area instead of restoring over the registered project folder. The original backup archive is not modified.

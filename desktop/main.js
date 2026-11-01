@@ -370,7 +370,7 @@ async function probeRemoteConnection(input = {}) {
 }
 
 function remoteWindowTitle(connection) {
-  return `${connection.name} - Remote UPM`;
+  return `${connection.name} — Remote UPM`;
 }
 
 async function openRemoteConnection(id) {
@@ -1037,7 +1037,10 @@ async function shutdownBackend() {
   ]);
   serverState.dockerRuntime?.stop?.();
   await new Promise((resolve) => {
-    if (!serverState.server?.listening) return resolve();
+    if (!serverState.server?.listening) {
+      resolve();
+      return;
+    }
     serverState.server.close(() => resolve());
   });
   serverState = null;

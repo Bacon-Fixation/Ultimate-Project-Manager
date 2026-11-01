@@ -756,7 +756,9 @@ async function createApp(options = {}) {
   });
 
   app.get("/api/host-stats/history", (req, res) => {
-    res.json({ history: hostStats.getHistory(req.query.hours) });
+    res.json({
+      history: hostStats.getHistory(req.query.hours, { maxPoints: req.query.maxPoints }),
+    });
   });
 
   app.get(

@@ -9,6 +9,10 @@ const state = {
   pm2HistoryRange: "24h",
   pm2HistoryData: null,
   hostHistoryData: null,
+  hostHistoryLoadedAt: 0,
+  hostHistoryRange: null,
+  hostHistoryPending: null,
+  refreshPending: null,
   hostChartDefinitions: [],
   pm2Logs: {
     projectId: null,
@@ -294,11 +298,6 @@ function formatBytes(bytes) {
   return `${value.toFixed(unit ? 2 : 0)} ${units[unit]}`;
 }
 
-function formatPercent(ratio) {
-  if (!Number.isFinite(Number(ratio))) return "-";
-  return `${(Number(ratio) * 100).toFixed(1)}%`;
-}
-
 function formatDate(value) {
   if (!value) return "Never";
   const date = new Date(value);
@@ -479,7 +478,7 @@ async function login(event) {
     await refresh();
     if (!state.refreshTimer)
       state.refreshTimer = setInterval(() => {
-        if (!$("#authGate").hidden) return;
+        if (document.hidden || !$("#authGate").hidden) return;
         refresh().catch(() => {});
       }, 10000);
   } catch (error) {
@@ -1007,8 +1006,10 @@ function setDashboardTab(tabId, options = {}) {
     panel.hidden = !active;
     panel.classList.toggle("is-active", active);
   });
-  if (tab === "overview" && state.hostHistoryData) {
-    requestAnimationFrame(() => renderHostHistoryInteractiveCharts());
+  if (tab === "overview") {
+    if (state.hostHistoryData) requestAnimationFrame(() => renderHostHistoryInteractiveCharts());
+    if (state.status && !document.hidden)
+      loadHostHistory().catch((error) => toast(error.message, true));
   }
 
   try {
@@ -1263,15 +1264,6 @@ function initProjectSettingsTabs() {
   );
 }
 
-function loadCollapsedSections() {
-  try {
-    const raw = JSON.parse(localStorage.getItem("upm:collapsed-sections") || "[]");
-    state.collapsedSections = new Set(Array.isArray(raw) ? raw.map(String) : []);
-  } catch {
-    state.collapsedSections = new Set();
-  }
-}
-
 function saveCollapsedSections() {
   try {
     localStorage.setItem("upm:collapsed-sections", JSON.stringify([...state.collapsedSections]));
@@ -1427,13 +1419,6 @@ function setDashboardSectionCollapsed(sectionId, collapsed) {
   }
 }
 
-function applyCollapsedSections() {
-  document.querySelectorAll("[data-dashboard-section]").forEach((section) => {
-    const id = String(section.dataset.dashboardSection || "");
-    setDashboardSectionCollapsed(id, state.collapsedSections.has(id));
-  });
-}
-
 function syncProjectGridCollapseLayout(grid = $("#projectGrid")) {
   if (!grid) return;
   const total = state.projects.length;
@@ -1476,7 +1461,6 @@ function setAllProjectsCollapsed(collapsed) {
   saveCollapsedProjects();
   syncProjectGridCollapseLayout();
   document.querySelectorAll(".project-card[data-id]").forEach((card) => {
-    const id = String(card.dataset.id);
     card.classList.toggle("is-collapsed", collapsed);
     const body = card.querySelector(".project-card-body");
     if (body) body.hidden = collapsed;
@@ -2086,7 +2070,8 @@ function renderHostHistory(history = {}) {
       : "Collecting samples…";
   $("#hostHistorySummary").innerHTML = `
     <div><span class="meta-label">Overall CPU · ${escapeHtml(rangeLabel)}</span><strong>${escapeHtml(formatSummary(summary.cpuPercent))}</strong></div>
-    <div><span class="meta-label">Memory · ${escapeHtml(rangeLabel)}</span><strong>${escapeHtml(formatSummary(summary.memoryPercent))}</strong></div>`;
+    <div><span class="meta-label">Memory · ${escapeHtml(rangeLabel)}</span><strong>${escapeHtml(formatSummary(summary.memoryPercent))}</strong></div>
+    ${history.sourcePointCount > (history.points?.length || 0) ? '<div class="muted">Charts show averaged points. Min, max, and average summaries use all recorded samples.</div>' : ""}`;
   $("#hostHistoryCharts").innerHTML = [
     hostHistoryChart(history.points, "cpuPercent", "Overall CPU history"),
     hostHistoryChart(history.points, "memoryPercent", "Memory history"),
@@ -2108,9 +2093,27 @@ function renderHostHistory(history = {}) {
 }
 
 async function loadHostHistory(hours = null) {
-  const selected = hours || $("#hostHistoryRange")?.value || 24;
-  const data = await api(`/api/host-stats/history?hours=${encodeURIComponent(selected)}`);
-  renderHostHistory(data.history || {});
+  const selected = String(hours || $("#hostHistoryRange")?.value || 24);
+  if (state.hostHistoryRange === selected && Date.now() - state.hostHistoryLoadedAt < 60000) return;
+  if (state.hostHistoryPending) {
+    await state.hostHistoryPending;
+    return loadHostHistory(hours);
+  }
+  state.hostHistoryPending = (async () => {
+    const data = await api(
+      `/api/host-stats/history?hours=${encodeURIComponent(selected)}&maxPoints=720`,
+    );
+    // A range change during the request must not paint stale charts.
+    if (String($("#hostHistoryRange")?.value || 24) !== selected) return;
+    renderHostHistory(data.history || {});
+    state.hostHistoryRange = selected;
+    state.hostHistoryLoadedAt = Date.now();
+  })();
+  try {
+    await state.hostHistoryPending;
+  } finally {
+    state.hostHistoryPending = null;
+  }
 }
 
 function filesystemPercent(fs = {}) {
@@ -2638,7 +2641,7 @@ function renderPm2Processes(pm2, project, openMenus = new Set()) {
         <span>ID ${escapeHtml(Number.isFinite(proc.id) ? proc.id : "-")}</span>
         <span>PID ${escapeHtml(proc.pid || "-")}</span>
         <span${processCpuTitle(proc) ? ` title="${escapeHtml(processCpuTitle(proc))}"` : ""}>CPU ${escapeHtml(formatProcessCpu(proc))}</span>
-        ${Number(proc.cpuRawPercent) > 100 ? `<span title="PM2 reports per-process CPU on a 0-100 × logical-core scale.">PM2 Raw CPU ${escapeHtml(Number(proc.cpuRawPercent).toFixed(1))}%</span>` : ""}
+        ${Number(proc.cpuRawPercent) > 100 ? `<span title="PM2 reports per-process CPU on a 0–100 × logical-core scale.">PM2 Raw CPU ${escapeHtml(Number(proc.cpuRawPercent).toFixed(1))}%</span>` : ""}
         <span title="${escapeHtml(gpuTelemetryTitle(pm2))}">GPU ${escapeHtml(formatGpuMetric(proc))}</span>
         <span>RAM ${escapeHtml(formatBytes(proc.memoryBytes))}</span>
         <span>Heap ${escapeHtml(formatHeapMetric(proc))}</span>
@@ -3218,7 +3221,7 @@ async function openFeaturePack(project) {
 }
 
 function contentDispositionFilename(value, fallback) {
-  const match = /filename\*?=(?:UTF-8''|\")?([^\";]+)/i.exec(String(value || ""));
+  const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(String(value || ""));
   if (!match) return fallback;
   try {
     return decodeURIComponent(match[1].replace(/^"|"$/g, "").trim());
@@ -4725,17 +4728,23 @@ async function openFileTools(project = null) {
   }
 }
 
-async function refresh() {
+function refresh() {
+  if (!state.refreshPending) {
+    state.refreshPending = refreshDashboard().finally(() => {
+      state.refreshPending = null;
+    });
+  }
+  return state.refreshPending;
+}
+
+async function refreshDashboard() {
   try {
-    const hostHours = $("#hostHistoryRange")?.value || 24;
-    const [statusData, projectsData, activityData, storageData, hostHistoryData] =
-      await Promise.all([
-        api("/api/status"),
-        api("/api/projects"),
-        api("/api/activity?limit=50"),
-        api("/api/storage"),
-        api(`/api/host-stats/history?hours=${encodeURIComponent(hostHours)}`),
-      ]);
+    const [statusData, projectsData, activityData, storageData] = await Promise.all([
+      api("/api/status"),
+      api("/api/projects"),
+      api("/api/activity?limit=50"),
+      api("/api/storage"),
+    ]);
     state.status = statusData;
     state.projects = projectsData.projects;
     pruneProjectUiState();
@@ -4749,7 +4758,7 @@ async function refresh() {
     $("#serviceStatus").className = "status-pill online";
     renderStats(statusData, storageData.storage);
     renderHostStats(statusData.host || {}, statusData.dockerRuntime || {});
-    renderHostHistory(hostHistoryData.history || {});
+    if (state.activeDashboardTab === "overview" && !document.hidden) await loadHostHistory();
     renderBackupStorage(storageData.storage);
     renderStorage(storageData.storage);
     renderProjects();
@@ -6008,6 +6017,7 @@ function startPm2LogAutoRefresh() {
   if (checkbox) checkbox.checked = true;
   state.pm2Logs.timer = setInterval(() => {
     if (!$("#pm2LogsDialog")?.open) return stopPm2LogAutoRefresh();
+    if (document.hidden) return;
     loadPm2Logs({ silent: true }).catch(() => {});
   }, 5000);
 }
@@ -7723,12 +7733,16 @@ async function bootstrap() {
     await refresh();
     if (!state.refreshTimer)
       state.refreshTimer = setInterval(() => {
-        if (!$("#authGate").hidden) return;
+        if (document.hidden || !$("#authGate").hidden) return;
         refresh().catch(() => {});
       }, 10000);
   } catch (error) {
     showAuthGate(error.message);
   }
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && state.status && $("#authGate").hidden) refresh().catch(() => {});
+});
 
 bootstrap();

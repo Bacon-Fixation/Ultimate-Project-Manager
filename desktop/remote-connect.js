@@ -94,7 +94,12 @@ function renderConnections() {
     remove.className = "danger";
     remove.textContent = "Remove";
     remove.addEventListener("click", async () => {
-      if (!confirm(`Remove ${connection.name}? Its saved remote browser session will also be cleared.`)) return;
+      if (
+        !confirm(
+          `Remove ${connection.name}? Its saved remote browser session will also be cleared.`,
+        )
+      )
+        return;
       try {
         connections = await api.remove(connection.id);
         renderConnections();

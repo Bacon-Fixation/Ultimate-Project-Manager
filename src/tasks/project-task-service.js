@@ -133,7 +133,7 @@ function stripCommentTail(text) {
 function extractCommentTask(line) {
   const text = String(line || "");
   const match =
-    /(?:^|\s)(?:\/\/|\/\*+|\*+|#|<!--|--|;|\{\/\*)\s*@?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)\b(?:\s*\([^)]*\))?\s*[:\-]?\s*(.*)$/i.exec(
+    /(?:^|\s)(?:\/\/|\/\*+|\*+|#|<!--|--|;|\{\/\*)\s*@?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)\b(?:\s*\([^)]*\))?\s*[:-]?\s*(.*)$/i.exec(
       text,
     );
   if (!match) return null;
@@ -145,7 +145,7 @@ function extractChecklistTask(line) {
   if (!match) return null;
   let title = cleanTitle(match[3]);
   let kind = "todo";
-  const prefix = /^(?:\[)?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)(?:\])?\s*[:\-]\s*(.+)$/i.exec(title);
+  const prefix = /^(?:\[)?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)(?:\])?\s*[:-]\s*(.+)$/i.exec(title);
   if (prefix) {
     kind = markerKind(prefix[1]);
     title = cleanTitle(prefix[2]);
@@ -161,7 +161,7 @@ function extractTaskDocumentItem(line) {
   const checklist = extractChecklistTask(line);
   if (checklist) return checklist;
   const match =
-    /^\s*(?:[-*+]\s+)?(?:\[)?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)(?:\])?\s*[:\-]\s*(.+?)\s*$/i.exec(
+    /^\s*(?:[-*+]\s+)?(?:\[)?(TODO|FIXME|FIX|NOTE|BUG|HACK|XXX)(?:\])?\s*[:-]\s*(.+?)\s*$/i.exec(
       String(line || ""),
     );
   if (!match) return null;

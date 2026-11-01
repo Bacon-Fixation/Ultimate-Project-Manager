@@ -54,7 +54,7 @@ function requireSafePathComponent(value, label = "Path component", options = {})
     text === "." ||
     text === ".." ||
     text.length > maxLength ||
-    /[\/\\\u0000-\u001f\u007f]/.test(text) ||
+    /[/\\\u0000-\u001f\u007f]/.test(text) ||
     !/^[A-Za-z0-9._-]+$/.test(text)
   ) {
     throw new Error(
@@ -79,7 +79,9 @@ async function exists(target) {
 }
 
 function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 async function unlinkWithRetry(target) {

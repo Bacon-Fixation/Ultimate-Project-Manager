@@ -1,6 +1,7 @@
 "use strict";
 
 const fsp = require("fs/promises");
+const { createReadStream } = require("fs");
 const os = require("os");
 const path = require("path");
 const { atomicWriteFile } = require("../filesystem/atomic-file");
@@ -51,6 +52,7 @@ class Pm2HistoryStore {
       Number(options.sampleIntervalMs || DEFAULT_SAMPLE_INTERVAL_MS),
     );
     this.records = [];
+    this.stringPool = new Map();
     this.lastSampleAt = 0;
     this.lastCompactAt = 0;
     this.writeChain = Promise.resolve();
@@ -59,27 +61,61 @@ class Pm2HistoryStore {
   async init() {
     await fsp.mkdir(path.dirname(this.file), { recursive: true });
     try {
-      const raw = await fsp.readFile(this.file, "utf8");
       const cutoff = Date.now() - this.retentionMs;
-      this.records = raw
-        .split(/\r?\n/)
-        .filter(Boolean)
-        .map((line) => {
-          try {
-            return JSON.parse(line);
-          } catch {
-            return null;
-          }
-        })
-        .filter((item) => item && new Date(item.timestamp).getTime() >= cutoff)
-        .map(normalizeLegacyCpuSample);
-      const lastSample = [...this.records].reverse().find((item) => item.kind === "sample");
-      this.lastSampleAt = lastSample ? new Date(lastSample.timestamp).getTime() : 0;
+      const retainLine = (line) => {
+        let item;
+        try {
+          item = JSON.parse(line);
+        } catch {
+          return;
+        }
+        const timestamp = new Date(item?.timestamp).getTime();
+        if (!item || !Number.isFinite(timestamp) || timestamp < cutoff) return;
+        item = this._internRecord(normalizeLegacyCpuSample(item));
+        this.records.push(item);
+        if (item.kind === "sample") this.lastSampleAt = timestamp;
+      };
+      let pending = "";
+      for await (const chunk of createReadStream(this.file, { encoding: "utf8" })) {
+        pending += chunk;
+        let start = 0,
+          end;
+        while ((end = pending.indexOf("\n", start)) !== -1) {
+          retainLine(pending.slice(start, end));
+          start = end + 1;
+        }
+        pending = pending.slice(start);
+      }
+      if (pending) retainLine(pending);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
     await this.compact(true);
     return this;
+  }
+
+  _internRecord(record) {
+    // Reuse repeated metadata strings without changing the public/disk record format.
+    for (const key of [
+      "projectId",
+      "processKey",
+      "name",
+      "namespace",
+      "status",
+      "cwd",
+      "script",
+      "nodeVersion",
+      "version",
+      "execMode",
+      "startedAt",
+    ]) {
+      const value = record[key];
+      if (typeof value !== "string" || value.length > 4096) continue;
+      const existing = this.stringPool.get(value);
+      if (existing !== undefined) record[key] = existing;
+      else if (this.stringPool.size < 20000) this.stringPool.set(value, value);
+    }
+    return record;
   }
 
   _enqueue(task) {
@@ -89,7 +125,7 @@ class Pm2HistoryStore {
 
   async _append(records) {
     if (!records.length) return;
-    this.records.push(...records);
+    for (const record of records) this.records.push(this._internRecord(record));
     const text = records.map((item) => JSON.stringify(item)).join("\n") + "\n";
     await this._enqueue(() => fsp.appendFile(this.file, text, "utf8"));
     if (Date.now() - this.lastCompactAt >= HOUR_MS) await this.compact();
@@ -179,9 +215,23 @@ class Pm2HistoryStore {
     this.lastCompactAt = now;
     const cutoff = now - this.retentionMs;
     this.records = this.records.filter((item) => new Date(item.timestamp).getTime() >= cutoff);
-    const text = this.records.map((item) => JSON.stringify(item)).join("\n");
+    // Keep an array snapshot for write ordering, but never serialize the whole log at once.
+    this.stringPool.clear();
+    for (const record of this.records) this._internRecord(record);
+    const records = this.records.slice();
+    async function* chunks() {
+      let chunk = "";
+      for (const record of records) {
+        chunk += `${JSON.stringify(record)}\n`;
+        if (chunk.length >= 64 * 1024) {
+          yield chunk;
+          chunk = "";
+        }
+      }
+      if (chunk) yield chunk;
+    }
     await this._enqueue(() =>
-      atomicWriteFile(this.file, text ? `${text}\n` : "", {
+      atomicWriteFile(this.file, chunks(), {
         encoding: "utf8",
         backup: true,
       }),

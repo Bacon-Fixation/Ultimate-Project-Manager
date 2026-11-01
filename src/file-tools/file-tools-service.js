@@ -18,7 +18,7 @@ const {
   babelParserAvailable,
   DEFAULT_COMMENT_MAX_BYTES,
 } = require("./file-tools-core");
-const { AGGRESSIVENESS_LEVELS, normalizeAggressiveness } = require("./comment-policy");
+const { normalizeAggressiveness } = require("./comment-policy");
 
 const WORKFLOWS = Object.freeze({
   latest: {

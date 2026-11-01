@@ -8,11 +8,7 @@ const {
   requireSafePathComponent,
   safeName,
 } = require("../backup/project-backup");
-const {
-  canonicalPath,
-  comparablePath,
-  isPathInside,
-} = require("../filesystem/path-boundary");
+const { canonicalPath, comparablePath, isPathInside } = require("../filesystem/path-boundary");
 
 async function filesystemStats(directory) {
   const target = path.resolve(String(directory));
@@ -103,7 +99,10 @@ class RemoteProjectExecutor {
       const canonicalRoot = await canonicalPath(root);
       if (isPathInside(canonicalRoot, canonicalCandidate)) return canonicalCandidate;
     }
-    throw new Error(`${message}: ${path.resolve(candidate)}`);
+    const error = new Error(message);
+    error.statusCode = 403;
+    error.code = "AGENT_PATH_NOT_ALLOWED";
+    throw error;
   }
 
   async validate(project) {

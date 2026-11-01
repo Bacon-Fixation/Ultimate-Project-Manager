@@ -409,7 +409,7 @@ function extractAxmMetrics(raw = {}) {
   const env = raw.pm2_env || {};
   const axm = env.axm_monitor || raw.axm_monitor || {};
 
-  let heapUsedBytes = metricBytes(
+  const heapUsedBytes = metricBytes(
     findAxmMetric(axm, ["Used Heap Size", "Heap Used", "Heap Used Size"]),
   );
   let heapTotalBytes = metricBytes(
@@ -535,7 +535,10 @@ function aliasMatches(project, processInfo) {
 }
 
 function projectRuntimeRoots(project) {
-  const roots = [project?.projectRoot, ...(Array.isArray(project?.pm2RuntimeRoots) ? project.pm2RuntimeRoots : [])]
+  const roots = [
+    project?.projectRoot,
+    ...(Array.isArray(project?.pm2RuntimeRoots) ? project.pm2RuntimeRoots : []),
+  ]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
   return [...new Set(roots.map((value) => path.resolve(value)))];
@@ -698,7 +701,10 @@ class Pm2Monitor extends EventEmitter {
       this.plannedActions.delete(key);
       throw error;
     }
-    if (this.actionDelayMs) await new Promise((resolve) => setTimeout(resolve, this.actionDelayMs));
+    if (this.actionDelayMs)
+      await new Promise((resolve) => {
+        setTimeout(resolve, this.actionDelayMs);
+      });
     const status = await this.refresh();
     return {
       action: normalized,
@@ -715,7 +721,10 @@ class Pm2Monitor extends EventEmitter {
     const key = processIdentity(processInfo);
     try {
       const result = await this.deleteRunner(Number(processInfo.id));
-      if (this.actionDelayMs) await new Promise((resolve) => setTimeout(resolve, this.actionDelayMs));
+      if (this.actionDelayMs)
+        await new Promise((resolve) => {
+          setTimeout(resolve, this.actionDelayMs);
+        });
       const status = await this.refresh();
       return {
         action: "delete",
@@ -737,7 +746,10 @@ class Pm2Monitor extends EventEmitter {
     );
     const appName = normalizePm2AppName(project.pm2EcosystemAppName || null);
     const result = await this.projectStartRunner(project.projectRoot, ecosystemFile, appName);
-    if (this.actionDelayMs) await new Promise((resolve) => setTimeout(resolve, this.actionDelayMs));
+    if (this.actionDelayMs)
+      await new Promise((resolve) => {
+        setTimeout(resolve, this.actionDelayMs);
+      });
     await this.refresh();
     return {
       action: "start-project",
@@ -958,9 +970,7 @@ class Pm2Monitor extends EventEmitter {
       } else {
         const pathCandidates = enabledProjects
           .filter((project) => pathMatches(project, processInfo))
-          .sort(
-            (a, b) => matchingRootLength(b, processInfo) - matchingRootLength(a, processInfo),
-          );
+          .sort((a, b) => matchingRootLength(b, processInfo) - matchingRootLength(a, processInfo));
         if (pathCandidates[0]) {
           assigned.get(pathCandidates[0].id).push(processInfo);
           matchedProjectIds.push(pathCandidates[0].id);
