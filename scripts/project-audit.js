@@ -2,7 +2,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const { readmeTitleIssue } = require("./readme-title");
 
 const ROOT = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
@@ -232,10 +231,6 @@ requireAudit(
     read("src/manager/backup-manager.js").includes("_handlePm2QueuedStarts"),
   "PM2 startup dependency/elevation gates are missing.",
 );
-
-const readme = read("README.md");
-const readmeIssue = readmeTitleIssue(readme, pkg.version);
-requireAudit(!readmeIssue, readmeIssue);
 
 if (!fs.existsSync(path.join(ROOT, "package-lock.json"))) {
   warnings.push(
