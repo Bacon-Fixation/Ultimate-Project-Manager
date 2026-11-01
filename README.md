@@ -1,4 +1,4 @@
-# Ultimate Project Manager v0.10.14
+# Ultimate Project Manager v0.10.15
 
 Ultimate Project Manager (UPM) is a local desktop dashboard for managing, monitoring, backing up, and recovering multiple Node.js projects from one place.
 
