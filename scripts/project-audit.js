@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { readmeTitleIssue } = require("./readme-title");
 
 const ROOT = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
@@ -233,10 +234,8 @@ requireAudit(
 );
 
 const readme = read("README.md");
-requireAudit(
-  readme.includes(`# Ultimate Project Manager v${pkg.version}`),
-  "README version does not match package.json.",
-);
+const readmeIssue = readmeTitleIssue(readme, pkg.version);
+requireAudit(!readmeIssue, readmeIssue);
 
 if (!fs.existsSync(path.join(ROOT, "package-lock.json"))) {
   warnings.push(
